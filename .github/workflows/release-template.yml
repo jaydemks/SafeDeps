@@ -79,15 +79,15 @@ jobs:
         run: dotnet restore "packages/dotnet-tool/SafeDeps.Tool.csproj"
       - name: Pack .NET global tool
         run: |
-          dotnet pack "packages/dotnet-tool/SafeDeps.Tool.csproj" \
-            -c Release \
-            -p:PackageOutputPath=artifacts/dotnet
+          mkdir -p artifacts/dotnet
+          dotnet pack "packages/dotnet-tool/SafeDeps.Tool.csproj" -c Release
+          find packages/dotnet-tool -type f -name "*.nupkg" ! -name "*.snupkg" -exec cp -f {} artifacts/dotnet/ \;
       - name: Verify NuGet package output
         run: |
-          ls -la artifacts/dotnet || true
+          ls -la artifacts/dotnet
           COUNT=$(ls -1 artifacts/dotnet/*.nupkg 2>/dev/null | wc -l || true)
           if [ "${COUNT}" -eq 0 ]; then
-            echo "No .nupkg produced in artifacts/dotnet"
+            echo "No .nupkg produced by dotnet pack"
             exit 1
           fi
       - name: Upload NuGet package
