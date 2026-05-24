@@ -342,7 +342,7 @@ Use trusted publishing/OIDC whenever available.
 Run local preflight checks before triggering a release:
 
 ```bash
-python scripts/release/preflight.py --expected-version 0.2.1
+python scripts/release/preflight.py --expected-version 0.2.2
 ```
 
 Release workflow template:
