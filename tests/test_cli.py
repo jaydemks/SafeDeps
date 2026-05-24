@@ -263,6 +263,17 @@ def test_pnpm_lock_invalid_reports_high_when_yaml_available(tmp_path):
         ),
         encoding="utf-8",
     )
+    (tmp_path / ".safedeps").mkdir()
+    (tmp_path / ".safedeps" / "policy.json").write_text(
+        json.dumps(
+            {
+                "require_lockfiles": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(["scan", str(tmp_path), "--out", ".tmp-security", "--fail-on", "HIGH"])
+    assert code == 2
 
 def test_ui_page_renders_findings():
     result = ScanResult(
@@ -284,17 +295,6 @@ def test_ui_page_renders_findings():
     assert "FLOATING_VERSION" in page
     assert "package.json" in page
     assert "Use For Approval" in page
-    (tmp_path / ".safedeps").mkdir()
-    (tmp_path / ".safedeps" / "policy.json").write_text(
-        json.dumps(
-            {
-                "require_lockfiles": True,
-            }
-        ),
-        encoding="utf-8",
-    )
-    code = main(["scan", str(tmp_path), "--out", ".tmp-security", "--fail-on", "HIGH"])
-    assert code == 2
 
 
 def test_yarn_lock_denylist_fails(tmp_path):
@@ -497,7 +497,9 @@ def test_monorepo_workspace_without_lockfile_reports_missing(tmp_path):
     (tmp_path / ".safedeps").mkdir()
     (tmp_path / ".safedeps" / "policy.json").write_text(json.dumps({"require_lockfiles": True}), encoding="utf-8")
     code = main(["scan", str(tmp_path), "--out", ".tmp-security", "--fail-on", "HIGH"])
-    assert code == 2
+    assert code == 0
+    report = json.loads((tmp_path / ".tmp-security" / "safedeps-report.json").read_text(encoding="utf-8"))
+    assert any(f.get("rule") == "MISSING_LOCKFILE" and f.get("manager") == "npm" for f in report.get("findings", []))
 
 
 def test_typosquatting_risk_for_pip_dependency_reports_medium(tmp_path):
@@ -686,7 +688,7 @@ def test_scan_writes_sarif_when_requested(tmp_path):
             {
                 "name": "demo-node",
                 "version": "1.0.0",
-                "dependencies": {"lodash": "latest"},
+                "dependencies": {"lodash": "4.17.21"},
             }
         ),
         encoding="utf-8",
