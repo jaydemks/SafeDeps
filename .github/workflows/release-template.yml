@@ -75,16 +75,27 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Restore .NET tool project
+        run: dotnet restore "packages/dotnet-tool/SafeDeps.Tool.csproj"
       - name: Pack .NET global tool
         run: |
           dotnet pack "packages/dotnet-tool/SafeDeps.Tool.csproj" \
             -c Release \
             -p:PackageOutputPath=artifacts/dotnet
+      - name: Verify NuGet package output
+        run: |
+          ls -la artifacts/dotnet || true
+          COUNT=$(ls -1 artifacts/dotnet/*.nupkg 2>/dev/null | wc -l || true)
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "No .nupkg produced in artifacts/dotnet"
+            exit 1
+          fi
       - name: Upload NuGet package
         uses: actions/upload-artifact@v4
         with:
           name: dotnet-tool-nupkg
           path: artifacts/dotnet/*.nupkg
+          if-no-files-found: error
 
   release-manifest:
     needs: [build-python, build-npm-wrapper, build-dotnet-tool]
