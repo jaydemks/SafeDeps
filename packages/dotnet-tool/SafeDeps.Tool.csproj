@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>safedeps-dotnet</ToolCommandName>
     <PackageId>SafeDeps.Tool</PackageId>
-    <PackageVersion>0.2.2</PackageVersion>
+    <PackageVersion>0.2.3</PackageVersion>
     <Authors>Giovanni De Miccoli</Authors>
     <Description>SafeDeps .NET global tool wrapper for the SafeDeps CLI.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
