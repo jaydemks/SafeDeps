@@ -170,12 +170,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Skip publish when NUGET_API_KEY is missing
-        if: ${{ secrets.NUGET_API_KEY == '' }}
-        run: echo "NUGET_API_KEY is not configured. Skipping NuGet publish."
-      - name: Publish to NuGet
-        if: ${{ secrets.NUGET_API_KEY != '' }}
-        run: dotnet nuget push "dotnet-dist/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}"
+      - name: Publish to NuGet (conditional)
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "${NUGET_API_KEY:-}" ]; then
+            echo "NUGET_API_KEY is not configured. Skipping NuGet publish."
+            exit 0
+          fi
+          dotnet nuget push "dotnet-dist/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${NUGET_API_KEY}"
 
   attest-build-provenance:
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
