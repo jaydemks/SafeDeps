@@ -1,6 +1,10 @@
 .safedeps/
 .tmp-security/
 **/.tmp-security/
+.venv/
+.venv-test/
+venv/
+env/
 __pycache__/
 *.pyc
 *.pyo

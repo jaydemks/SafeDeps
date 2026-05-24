@@ -26,34 +26,71 @@ Option B - download ZIP from GitHub and extract it:
 cd /path/to/extracted/safedeps-0.1.0
 ```
 
-2. Install SafeDeps from the local repository folder:
+2. Create and activate a virtual environment:
+
+macOS/Linux:
+
+```bash
+python3 -m venv .venv-test
+source .venv-test/bin/activate
+```
+
+Windows (PowerShell):
+
+```powershell
+py -m venv .venv-test
+.\.venv-test\Scripts\Activate.ps1
+```
+
+If script execution is blocked in PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv-test\Scripts\Activate.ps1
+```
+
+3. Install SafeDeps from the local repository folder:
 
 ```bash
 pip install .
 ```
 
-3. In your project folder, run one-time setup:
+4. In your project folder, run one-time setup:
 
 ```bash
 safedeps setup .
 source .safedeps/activate.sh
 ```
 
-4. Open the UI:
+Windows (PowerShell) setup command:
+
+```powershell
+safedeps setup .
+```
+
+5. Open the UI:
 
 ```bash
 safedeps ui . --open-browser
 ```
 
-Default UI URL: `http://127.0.0.1:8765`
+Default UI URL: `http://127.0.0.1:8765/`
 
-5. Run scan from UI or CLI:
+If port `8765` is already in use, run:
+
+```bash
+safedeps ui . --host 127.0.0.1 --port 8877
+```
+
+Then open `http://127.0.0.1:8877/`.
+
+6. Run scan from UI or CLI:
 
 ```bash
 safedeps scan . --fail-on HIGH
 ```
 
-After `source .safedeps/activate.sh`, `pip install ...` in that project shell is automatically guarded by SafeDeps.
+After `source .safedeps/activate.sh` (macOS/Linux), `pip install ...` in that project shell is automatically guarded by SafeDeps.
 
 ## What It Is (Simple)
 
@@ -68,6 +105,8 @@ It helps you block risky dependency changes early, for example:
 - suspicious package patterns
 
 In short: it is a backend safety gate for dependency workflows in local dev and CI.
+
+UI full guide: `docs/UI_DOCUMENTATION.md`
 
 ## Current State
 
@@ -137,6 +176,14 @@ Or bootstrap a local virtual environment automatically:
 ./scripts/bootstrap_dev.sh
 ```
 
+Windows manual setup:
+
+```powershell
+py -m venv .venv-test
+.\.venv-test\Scripts\Activate.ps1
+pip install -e .[dev]
+```
+
 ### Python (from PyPI, after publish)
 
 ```bash
@@ -190,6 +237,12 @@ One-time project auto-configuration (guard `pip install` automatically in this p
 ```bash
 safedeps setup .
 source .safedeps/activate.sh
+```
+
+Windows (PowerShell):
+
+```powershell
+safedeps setup .
 ```
 
 Fail CI on high/critical findings:
