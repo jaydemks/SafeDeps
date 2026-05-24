@@ -37,10 +37,10 @@ jobs:
             exit 1
           fi
       - name: Validate compliance artifacts
-        run: python scripts/validate_artifacts.py security-artifacts
+        run: python scripts/validate_artifacts.py examples/safe-project/security-artifacts
       - name: Upload security artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: safedeps-security-artifacts
-          path: security-artifacts/
+          path: examples/safe-project/security-artifacts/
