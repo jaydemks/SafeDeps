@@ -5,6 +5,8 @@
 .venv-test/
 venv/
 env/
+*.egg-info/
+examples/**/security-artifacts/
 __pycache__/
 *.pyc
 *.pyo
