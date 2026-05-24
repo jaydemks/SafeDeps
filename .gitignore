@@ -1,0 +1,8 @@
+.safedeps/
+.tmp-security/
+**/.tmp-security/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+packages/dotnet-tool/obj/

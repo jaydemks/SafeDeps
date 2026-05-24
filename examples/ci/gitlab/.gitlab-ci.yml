@@ -1,0 +1,21 @@
+stages:
+  - security
+
+safedeps_scan:
+  stage: security
+  image: python:3.12
+  script:
+    - python -m pip install --upgrade pip
+    - pip install .
+    - |
+      safedeps scan . \
+        --fail-on HIGH \
+        --out security-artifacts \
+        --sarif security-artifacts/safedeps.sarif \
+        --cyclonedx security-artifacts/safedeps.cdx.json \
+        --spdx security-artifacts/safedeps.spdx.json
+  artifacts:
+    when: always
+    paths:
+      - security-artifacts/
+    expire_in: 7 days

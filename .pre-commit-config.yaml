@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: safedeps-scan
+        name: safedeps scan
+        entry: safedeps scan . --fail-on HIGH --out security-artifacts
+        language: system
+        pass_filenames: false

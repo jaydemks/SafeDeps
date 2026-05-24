@@ -1,0 +1,36 @@
+trigger:
+- main
+
+pr:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- checkout: self
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.12'
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install .
+  displayName: Install SafeDeps
+
+- script: |
+    safedeps scan . \
+      --fail-on HIGH \
+      --out security-artifacts \
+      --sarif security-artifacts/safedeps.sarif \
+      --cyclonedx security-artifacts/safedeps.cdx.json \
+      --spdx security-artifacts/safedeps.spdx.json
+  displayName: Run SafeDeps Scan
+
+- task: PublishBuildArtifacts@1
+  condition: always()
+  inputs:
+    PathtoPublish: security-artifacts
+    ArtifactName: safedeps-security-artifacts
+    publishLocation: Container

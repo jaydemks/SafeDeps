@@ -1,0 +1,11 @@
+{
+  "name": "bad-project",
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "node suspicious.js"
+  },
+  "dependencies": {
+    "left-pad": "latest",
+    "token-grabber-demo": "^1.0.0"
+  }
+}

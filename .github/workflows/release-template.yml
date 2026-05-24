@@ -1,0 +1,249 @@
+name: SafeDeps Release Template
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Version to release (e.g. 0.2.1)
+        required: true
+      publish:
+        description: Publish artifacts to registries (true/false)
+        required: true
+        default: "false"
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run release preflight checks
+        run: |
+          EXPECTED_VERSION="${{ inputs.release_version }}"
+          if [ -z "$EXPECTED_VERSION" ]; then
+            EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          python scripts/release/preflight.py --expected-version "$EXPECTED_VERSION" ${{ (inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v')) && '--require-tag' || '' }}
+
+  build-python:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build python package
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+          python -m build
+      - name: Upload Python dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+  build-npm-wrapper:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pack npm wrapper
+        run: |
+          cd packages/npm-wrapper
+          npm pack
+      - name: Upload npm tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-wrapper-tarball
+          path: packages/npm-wrapper/*.tgz
+
+  build-dotnet-tool:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Pack .NET global tool
+        run: |
+          dotnet pack packages/dotnet-tool/SafeDeps.Tool.csproj -c Release -o artifacts/dotnet
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-tool-nupkg
+          path: artifacts/dotnet/*.nupkg
+
+  release-manifest:
+    needs: [build-python, build-npm-wrapper, build-dotnet-tool]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download Python dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Download npm tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-wrapper-tarball
+          path: packages/npm-wrapper/
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-tool-nupkg
+          path: artifacts/dotnet/
+      - name: Build release checksum manifest
+        run: |
+          VERSION="${{ inputs.release_version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          python scripts/release/create_release_manifest.py --version "$VERSION"
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: release-artifacts/release-manifest.json
+
+  publish-pypi:
+    if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [build-python, release-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+    steps:
+      - name: Download Python dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-npm:
+    if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [build-npm-wrapper, release-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download npm tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-wrapper-tarball
+          path: npm-dist/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Publish to npm (Trusted Publishing)
+        run: npm publish npm-dist/*.tgz --access public --provenance
+
+  publish-nuget:
+    if: ${{ (inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v')) && secrets.NUGET_API_KEY != '' }}
+    needs: [build-dotnet-tool, release-manifest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-tool-nupkg
+          path: dotnet-dist/
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish to NuGet
+        run: dotnet nuget push "dotnet-dist/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}"
+
+  attest-build-provenance:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [release-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    steps:
+      - name: Download Python dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Download npm tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-wrapper-tarball
+          path: npm-dist/
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-tool-nupkg
+          path: dotnet-dist/
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-artifacts/
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            dist/*
+            npm-dist/*
+            dotnet-dist/*
+            release-artifacts/release-manifest.json
+
+  github-release:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [release-manifest, publish-pypi, publish-npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Python dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Download npm tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-wrapper-tarball
+          path: npm-dist/
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-tool-nupkg
+          path: dotnet-dist/
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-artifacts/
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+            npm-dist/*
+            dotnet-dist/*
+            release-artifacts/release-manifest.json
+          generate_release_notes: true

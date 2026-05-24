@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safedeps"
+version = "0.2.0"
+description = "Cross-ecosystem dependency policy gate for safer installs and updates."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Giovanni De Miccoli"}]
+keywords = ["security", "supply-chain", "dependencies", "sbom", "audit", "pip", "npm", "nuget"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+  "Topic :: Security",
+  "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+safedeps = "safedeps.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["safedeps*"]

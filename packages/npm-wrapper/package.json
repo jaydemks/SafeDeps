@@ -1,0 +1,10 @@
+{
+  "name": "safedeps",
+  "version": "0.2.0",
+  "description": "npm wrapper for SafeDeps dependency policy gate",
+  "bin": {
+    "safedeps": "bin/safedeps.js"
+  },
+  "license": "MIT",
+  "author": "Giovanni De Miccoli"
+}
