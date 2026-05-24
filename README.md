@@ -6,22 +6,40 @@ It checks your project dependencies before install/update and can block risky ch
 
 It works with Python, npm, NuGet, and Git dependency definitions.
 
+> Status note (May 2026): public package publishing is not completed yet for PyPI, npm, and NuGet.  
+> We are finishing test coverage and release validation before publishing.
+
 ## Start In 60 Seconds
 
-1. Install SafeDeps:
+1. Get the repository (choose one option):
+
+Option A - clone with Git:
 
 ```bash
-pip install safedeps
+git clone <YOUR_REPO_URL>
+cd safedeps-0.1.0
 ```
 
-2. In your project folder, run one-time setup:
+Option B - download ZIP from GitHub and extract it:
+
+```bash
+cd /path/to/extracted/safedeps-0.1.0
+```
+
+2. Install SafeDeps from the local repository folder:
+
+```bash
+pip install .
+```
+
+3. In your project folder, run one-time setup:
 
 ```bash
 safedeps setup .
 source .safedeps/activate.sh
 ```
 
-3. Open the UI:
+4. Open the UI:
 
 ```bash
 safedeps ui . --open-browser
@@ -29,7 +47,7 @@ safedeps ui . --open-browser
 
 Default UI URL: `http://127.0.0.1:8765`
 
-4. Run scan from UI or CLI:
+5. Run scan from UI or CLI:
 
 ```bash
 safedeps scan . --fail-on HIGH
@@ -56,6 +74,11 @@ In short: it is a backend safety gate for dependency workflows in local dev and 
 - Core engine: Python CLI/library (`safedeps` package)
 - npm distribution: wrapper package present in `packages/npm-wrapper`
 - .NET global tool wrapper: implemented in `packages/dotnet-tool`
+- Publish status:
+  - PyPI: not published yet
+  - npm: not published yet
+  - NuGet: not published yet
+  - Target: publish only after test completion and release checks pass
 - Security outputs:
   - `security-artifacts/safedeps-report.json`
   - `security-artifacts/safedeps-sbom.json`
