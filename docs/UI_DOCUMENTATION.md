@@ -36,6 +36,11 @@ What it does:
 - `Project`: guard applies only in project context.
 - `Global`: guard applies globally.
 
+Reinstall/upgrade note:
+
+- After reinstalling SafeDeps, run `safedeps setup .` once in your target project.
+- The UI now re-checks effective guard hooks and aligns the toggle with real state.
+
 The header cards show:
 
 - setup status

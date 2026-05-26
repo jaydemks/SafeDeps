@@ -36,6 +36,13 @@ Windows desktop launcher (creates a `.bat` on Desktop):
 safedeps ui-shortcut
 ```
 
+Quick desktop shortcut flow (Windows):
+
+1. Open PowerShell.
+2. Run `safedeps ui-shortcut`.
+3. Verify `SafeDeps UI.bat` exists on your Desktop.
+4. If it is not created, run `safedeps help` and open an issue on GitHub with command output.
+
 Install from PyPI (recommended for standard usage):
 
 ```bash
@@ -112,6 +119,12 @@ safedeps ui --open-browser
 ```
 
 Then open the URL printed in terminal (default start port is `5200`).
+
+Important reinstall note (Auto Guard state):
+
+- After reinstall/upgrade, run `safedeps setup .` once in the project you want to protect.
+- SafeDeps now re-syncs the real guard state (profile/PATH hooks) with the UI toggle.
+- If you want to check commands again quickly, run `safedeps help`.
 
 6. Re-scan from UI or CLI:
 

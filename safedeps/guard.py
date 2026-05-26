@@ -694,12 +694,11 @@ exit /b %ERRORLEVEL%
         _state["protection_scope"] = default_scope
     auto_guard = bool(_state.get("auto_guard_powershell", False))
     _write_guard_state(root, _state)
-    # Reconcile persisted auto-guard state on reinstall/setup so UI toggle remains truthful.
-    if auto_guard:
-        try:
-            _set_powershell_autoguard(root, True)
-        except Exception:
-            pass
+    # Hard resync of profile hooks on reinstall/setup with verification.
+    try:
+        _force_autoguard_resync(root, auto_guard)
+    except Exception:
+        pass
     print(f"- Protection scope default: {_state['protection_scope']}")
     print(f"- Activate in bash/zsh: source {activate}")
     print(f"- Activate in PowerShell: . {activate_ps1}")
@@ -734,6 +733,49 @@ def _powershell_profile_candidates():
         home / "Documents" / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1",
     ]
 
+def _is_windows():
+    return os.name == "nt"
+
+def _get_user_path_entries_windows():
+    if not _is_windows():
+        return []
+    try:
+        import winreg  # type: ignore
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_READ) as key:
+            raw, _ = winreg.QueryValueEx(key, "Path")
+            return [p for p in str(raw).split(";") if p] if raw else []
+    except Exception:
+        return []
+
+def _write_user_path_entries_windows(entries: list[str]):
+    if not _is_windows():
+        return False
+    try:
+        import winreg  # type: ignore
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, ";".join(entries))
+        return True
+    except Exception:
+        return False
+
+def _set_user_path_guard_entry(root: Path, enable: bool):
+    guard_bin = str((root / ".safedeps" / "bin").resolve())
+    norm_guard = guard_bin.lower()
+    if _is_windows():
+        entries = _get_user_path_entries_windows()
+        filtered = [e for e in entries if str(e).strip().lower() != norm_guard]
+        if enable:
+            filtered.insert(0, guard_bin)
+        ok = _write_user_path_entries_windows(filtered)
+    else:
+        ok = True
+    cur_entries = [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+    cur_filtered = [e for e in cur_entries if str(e).strip().lower() != norm_guard]
+    if enable:
+        cur_filtered.insert(0, guard_bin)
+    os.environ["PATH"] = os.pathsep.join(cur_filtered)
+    return ok
+
 def _guard_profile_snippet(root: Path):
     activate_ps1 = (root / ".safedeps" / "activate.ps1").resolve()
     return (
@@ -763,7 +805,7 @@ def _write_guard_state(root: Path, state: dict):
     path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 def _is_auto_guard_enabled(root: Path):
-    return bool(_load_guard_state(root).get("auto_guard_powershell", False))
+    return _sync_autoguard_state_file(root)
 
 def _set_powershell_autoguard(root: Path, enable: bool):
     snippet = _guard_profile_snippet(root)
@@ -776,7 +818,20 @@ def _set_powershell_autoguard(root: Path, enable: bool):
         content = profile.read_text(encoding="utf-8") if profile.exists() else ""
         if enable:
             if marker_start in content and marker_end in content:
-                continue
+                start = content.find(marker_start)
+                end = content.find(marker_end, start)
+                if end != -1:
+                    end += len(marker_end)
+                    if end < len(content) and content[end:end + 1] == "\n":
+                        end += 1
+                    existing = content[start:end]
+                    if existing != snippet:
+                        if content and not content.endswith("\n") and start == len(content):
+                            content += "\n"
+                        content = content[:start] + snippet + content[end:]
+                        profile.write_text(content, encoding="utf-8")
+                        updated_any = True
+                    continue
             if content and not content.endswith("\n"):
                 content += "\n"
             content += snippet
@@ -796,11 +851,52 @@ def _set_powershell_autoguard(root: Path, enable: bool):
     state = _load_guard_state(root)
     state["auto_guard_powershell"] = enable
     _write_guard_state(root, state)
+    _set_user_path_guard_entry(root, enable)
     if enable and not updated_any:
         return "Auto guard already enabled in PowerShell profile."
     if (not enable) and not updated_any:
         return "Auto guard already disabled in PowerShell profile."
     return "Auto guard enabled for new PowerShell sessions." if enable else "Auto guard disabled for new PowerShell sessions."
+
+def _profile_snippet_present(root: Path):
+    marker_start = "# >>> SafeDeps Auto Guard >>>"
+    marker_end = "# <<< SafeDeps Auto Guard <<<"
+    expected = _guard_profile_snippet(root)
+    for profile in _powershell_profile_candidates():
+        if not profile.exists():
+            continue
+        try:
+            content = profile.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if marker_start in content and marker_end in content and expected in content:
+            return True
+    return False
+
+def _path_guard_entry_present(root: Path):
+    guard_bin = str((root / ".safedeps" / "bin").resolve()).lower()
+    if _is_windows():
+        return any(str(e).strip().lower() == guard_bin for e in _get_user_path_entries_windows())
+    return any(str(e).strip().lower() == guard_bin for e in os.environ.get("PATH", "").split(os.pathsep) if e)
+
+def _effective_autoguard_enabled(root: Path):
+    return _profile_snippet_present(root) or _path_guard_entry_present(root)
+
+def _sync_autoguard_state_file(root: Path):
+    effective = _effective_autoguard_enabled(root)
+    state = _load_guard_state(root)
+    if bool(state.get("auto_guard_powershell", False)) != effective:
+        state["auto_guard_powershell"] = effective
+        _write_guard_state(root, state)
+    return effective
+
+def _verify_autoguard_state(root: Path, expected_enabled: bool):
+    state_enabled = bool(_load_guard_state(root).get("auto_guard_powershell", False))
+    snippet_present = _profile_snippet_present(root)
+    path_present = _path_guard_entry_present(root)
+    if expected_enabled:
+        return state_enabled and (snippet_present or path_present)
+    return (not state_enabled) and (not snippet_present) and (not path_present)
 
 def apply_guard_toggle(root: Path, action: str):
     if action == "enable_auto":
@@ -818,6 +914,22 @@ def apply_guard_toggle(root: Path, action: str):
         _write_guard_state(root, state)
         return "Protection scope set to GLOBAL (inside and outside project path)."
     raise ValueError(f"Unknown guard action: {action}")
+
+def _force_autoguard_resync(root: Path, target_enabled: bool):
+    if target_enabled:
+        _set_powershell_autoguard(root, False)
+        if not _verify_autoguard_state(root, False):
+            _set_powershell_autoguard(root, False)
+        _set_powershell_autoguard(root, True)
+        if not _verify_autoguard_state(root, True):
+            _set_powershell_autoguard(root, True)
+    else:
+        _set_powershell_autoguard(root, True)
+        if not _verify_autoguard_state(root, True):
+            _set_powershell_autoguard(root, True)
+        _set_powershell_autoguard(root, False)
+        if not _verify_autoguard_state(root, False):
+            _set_powershell_autoguard(root, False)
 
 def get_guard_mode_status(root: Path):
     enabled = _is_auto_guard_enabled(root)

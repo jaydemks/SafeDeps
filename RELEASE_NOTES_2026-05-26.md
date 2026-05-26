@@ -43,6 +43,8 @@ Post-release stabilization update focused on Windows guard reliability and UI be
   - uninstalling `safedeps` now performs guard/profile cleanup first, then allows uninstall to proceed without self-blocking
   - wrappers now fail-open automatically when `safedeps` is no longer importable
   - reinstall/setup now re-synchronizes persisted Auto Guard state, so UI toggle and real profile state stay aligned
+  - Auto Guard state now resolves from effective runtime hooks (profile/PATH), preventing false `ON` display after reinstall
+  - setup performs hard Auto Guard resync with verification steps to avoid stale hook states
 
 ## Documentation Alignment
 
