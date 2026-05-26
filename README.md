@@ -309,6 +309,11 @@ Quick help command (terminal/cmd/powershell):
 safedeps help
 ```
 
+Uninstall note (recommended):
+
+- Before running `pip uninstall safedeps`, set UI toggle `Auto ON/OFF` to `OFF`.
+- This helps avoid leftover shell/profile hooks that could keep blocking unmonitored installs after uninstall.
+
 Fail CI on high/critical findings:
 
 ```bash
