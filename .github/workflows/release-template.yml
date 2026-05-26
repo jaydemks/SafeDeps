@@ -180,6 +180,16 @@ jobs:
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
+      - name: Detect npm token
+        id: npm_token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "has_npm_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_npm_token=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -193,7 +203,13 @@ jobs:
             exit 1
           fi
           echo "NPM_TARBALL=$TAR" >> "$GITHUB_ENV"
+      - name: Publish to npm (NPM token fallback)
+        if: ${{ steps.npm_token.outputs.has_npm_token == 'true' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "$NPM_TARBALL" --access public --provenance
       - name: Publish to npm (Trusted Publishing)
+        if: ${{ steps.npm_token.outputs.has_npm_token == 'false' }}
         run: npm publish "$NPM_TARBALL" --access public --provenance
 
   publish-nuget:
