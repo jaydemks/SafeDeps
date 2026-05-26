@@ -217,7 +217,7 @@ npm install -g .
 From npm registry (after publish):
 
 ```bash
-npm install -g safedeps
+npm install -g @jaydemks/safedeps
 ```
 
 Note: npm runtime flow is implemented, but full cross-environment validation is still in progress.

@@ -30,6 +30,8 @@ Post-release stabilization update focused on Windows guard reliability and UI be
   - quick-action buttons now stay aligned even when labels are longer
   - Safe Update can request approval directly in an overlay (confirm/cancel), without redirecting users to another section
   - dependency list remains visible after dependency action errors and now shows clearer user-facing error messages
+- Registry publishing update:
+  - npm wrapper package renamed to scoped name `@jaydemks/safedeps` to avoid unscoped registry name collisions
 
 ## Documentation Alignment
 

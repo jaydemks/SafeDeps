@@ -1,5 +1,5 @@
 {
-  "name": "safedeps",
+  "name": "@jaydemks/safedeps",
   "version": "0.2.5",
   "description": "npm wrapper for SafeDeps dependency policy gate",
   "bin": {
