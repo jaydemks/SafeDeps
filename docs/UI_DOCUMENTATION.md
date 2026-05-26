@@ -7,12 +7,15 @@ This guide explains the current UI workflow in plain language.
 Recommended command:
 
 ```bash
-python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
+safedeps ui --open-browser
 ```
 
-URL:
+Behavior:
 
-- `http://127.0.0.1:8877/`
+- SafeDeps creates/uses `~/.safedeps/workspace` automatically when no path is provided.
+- UI files are stored there by default.
+- Default start port is `5200` and SafeDeps auto-tries next local ports if one is blocked.
+- On Windows you can create a desktop launcher with `safedeps ui-shortcut`.
 
 ## Light/Dark Theme
 
@@ -255,8 +258,8 @@ Action button:
 
 ### `{ "ok": false, "detail": "not_found" }`
 
-- Open exact root URL: `http://127.0.0.1:8877/`.
-- If needed, switch to another port.
+- Open the exact URL printed by terminal output.
+- If needed, set a custom port (`--port 5200`) and retry.
 
 ### Blank page with browser console extension errors
 

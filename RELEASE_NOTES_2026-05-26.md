@@ -1,4 +1,4 @@
-# SafeDeps 0.2.7 - Update Notes (2026-05-26)
+# SafeDeps 0.2.8 - Update Notes (2026-05-26)
 
 ## Summary
 
@@ -35,6 +35,10 @@ Post-release stabilization update focused on Windows guard reliability and UI be
 - Release channel update:
   - PyPI installation is now active for SafeDeps (`pip install safedeps`)
   - npm and NuGet publishing remain in progressive rollout
+- UI launch usability upgrade:
+  - `safedeps ui` now defaults to a dedicated workspace (`~/.safedeps/workspace`) to avoid scattered generated files
+  - UI server now auto-falls forward across local ports when the requested port is blocked
+  - new Windows helper command `safedeps ui-shortcut` creates a desktop `.bat` launcher
 
 ## Documentation Alignment
 

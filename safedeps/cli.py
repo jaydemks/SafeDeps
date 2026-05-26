@@ -419,10 +419,44 @@ def _python_env_warnings():
         warnings.append("pytest check unavailable. Ensure dev deps are installed with: pip install .[dev]")
     return warnings
 
+def _default_ui_workspace():
+    home = Path.home()
+    return (home / ".safedeps" / "workspace").resolve()
+
+def _resolve_ui_start_path(path_arg: str):
+    raw = (path_arg or "").strip()
+    if not raw or raw == ".":
+        d = _default_ui_workspace()
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    p = Path(raw).expanduser().resolve()
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def cmd_ui_shortcut(args):
+    if os.name != "nt":
+        print("Shortcut generation is currently available on Windows only.")
+        return 2
+    workspace = _default_ui_workspace()
+    workspace.mkdir(parents=True, exist_ok=True)
+    desktop = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Desktop"
+    desktop.mkdir(parents=True, exist_ok=True)
+    shortcut_path = desktop / "SafeDeps UI.bat"
+    content = (
+        "@echo off\r\n"
+        "setlocal\r\n"
+        f"cd /d \"{workspace}\"\r\n"
+        "safedeps ui . --host 127.0.0.1 --port 5200 --open-browser\r\n"
+    )
+    shortcut_path.write_text(content, encoding="utf-8")
+    print(f"Desktop launcher created: {shortcut_path}")
+    print("Double-click the .bat file to open SafeDeps UI.")
+    return 0
+
 def cmd_ui(args):
     host = args.host
     port = args.port
-    start_path = Path(args.path).resolve()
+    start_path = _resolve_ui_start_path(args.path)
     default_fail_on = args.fail_on
     setup_note = ""
 
@@ -644,9 +678,22 @@ def cmd_ui(args):
         def log_message(self, format, *args):
             return
 
-    server = ThreadingHTTPServer((host, port), UIHandler)
-    url = f"http://{host}:{port}/"
+    server = None
+    bind_port = int(port)
+    last_err = None
+    for p in range(bind_port, bind_port + 25):
+        try:
+            server = ThreadingHTTPServer((host, p), UIHandler)
+            bind_port = p
+            break
+        except OSError as e:
+            last_err = e
+            continue
+    if server is None:
+        raise last_err if last_err else RuntimeError("Unable to bind UI server port.")
+    url = f"http://{host}:{bind_port}/"
     print(f"SafeDeps UI running at {url}")
+    print(f"Workspace: {start_path}")
     print("Press Ctrl+C to stop.")
     if args.open_browser:
         threading.Thread(target=lambda: webbrowser.open(url), daemon=True).start()
@@ -662,8 +709,11 @@ def cmd_help(args):
     print("SafeDeps Quick Help")
     print("")
     print("Open UI")
-    print("- PowerShell/CMD: safedeps ui . --host 127.0.0.1 --port 8877 --open-browser")
-    print("- bash/zsh:       safedeps ui . --host 127.0.0.1 --port 8877 --open-browser")
+    print("- Fast start (recommended): safedeps ui --open-browser")
+    print("- Custom path:              safedeps ui <project_or_folder> --open-browser")
+    print("- Custom port:              safedeps ui --port 5200 --open-browser")
+    print("- Default workspace:        ~/.safedeps/workspace (auto-created)")
+    print("- Windows desktop launcher: safedeps ui-shortcut")
     print("")
     print("Core Commands")
     print("- Scan:       safedeps scan . --fail-on HIGH")
@@ -2359,12 +2409,14 @@ def main(argv=None):
     p_approve.add_argument("--baseline", default=".safedeps/vuln-baseline.json")
     p_approve.set_defaults(func=cmd_approve)
     p_ui=sub.add_parser("ui", help="Run local web UI for visual scans")
-    p_ui.add_argument("path", nargs="?", default=".")
+    p_ui.add_argument("path", nargs="?", default="")
     p_ui.add_argument("--host", default="127.0.0.1")
-    p_ui.add_argument("--port", type=int, default=8765)
+    p_ui.add_argument("--port", type=int, default=5200)
     p_ui.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
     p_ui.add_argument("--open-browser", action="store_true")
     p_ui.set_defaults(func=cmd_ui)
+    p_ui_shortcut=sub.add_parser("ui-shortcut", help="Create Windows desktop .bat launcher for SafeDeps UI")
+    p_ui_shortcut.set_defaults(func=cmd_ui_shortcut)
     p_setup=sub.add_parser("setup", help="One-time project setup for guarded pip install")
     p_setup.add_argument("path", nargs="?", default=".")
     p_setup.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")

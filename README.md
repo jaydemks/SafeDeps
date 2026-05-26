@@ -14,7 +14,26 @@ You can use SafeDeps in two ways:
 Open the UI with:
 
 ```bash
-python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
+safedeps ui --open-browser
+```
+
+What this command does:
+
+- creates and uses a dedicated SafeDeps workspace automatically (`~/.safedeps/workspace`)
+- keeps UI-generated files in that workspace by default (no random file scattering)
+- auto-selects an available local port starting from `5200` if the requested one is blocked
+- opens your browser directly on the local UI
+
+Optional:
+
+```bash
+safedeps ui <your-project-path> --open-browser
+```
+
+Windows desktop launcher (creates a `.bat` on Desktop):
+
+```powershell
+safedeps ui-shortcut
 ```
 
 Install from PyPI (recommended for standard usage):
@@ -89,10 +108,10 @@ python -m safedeps.cli setup .
 5. Open the UI (recommended command, works even if shell entrypoint is missing):
 
 ```bash
-python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
+safedeps ui --open-browser
 ```
 
-Then open `http://127.0.0.1:8877/`.
+Then open the URL printed in terminal (default start port is `5200`).
 
 6. Re-scan from UI or CLI:
 
@@ -346,7 +365,7 @@ safedeps approve . --manager npm --rule FLOATING_VERSION --package lodash --file
 Run the local visual UI:
 
 ```bash
-python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
+safedeps ui --open-browser
 ```
 
 The UI is fully in English and includes visual flows for:
@@ -466,7 +485,7 @@ Use trusted publishing/OIDC whenever available.
 Run local preflight checks before triggering a release:
 
 ```bash
-python scripts/release/preflight.py --expected-version 0.2.7
+python scripts/release/preflight.py --expected-version 0.2.8
 ```
 
 Release workflow template:
