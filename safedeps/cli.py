@@ -709,9 +709,10 @@ def cmd_help(args):
     print("SafeDeps Quick Help")
     print("")
     print("Open UI")
-    print("- Fast start (recommended): safedeps ui --open-browser")
-    print("- Custom path:              safedeps ui <project_or_folder> --open-browser")
-    print("- Custom port:              safedeps ui --port 5200 --open-browser")
+    print("- Fast start (recommended): safedeps ui")
+    print("- Custom path:              safedeps ui <project_or_folder>")
+    print("- Custom port:              safedeps ui --port 5200")
+    print("- Disable browser auto-open: safedeps ui --no-open-browser")
     print("- Default workspace:        ~/.safedeps/workspace (auto-created)")
     print("- Windows desktop launcher: safedeps ui-shortcut")
     print("")
@@ -730,6 +731,14 @@ def cmd_help(args):
     print("Expected Runtime Behavior")
     print("- Unpinned runtime installs (example: pip install colorama) are blocked.")
     print("- Pinned install example: pip install colorama==0.4.6")
+    return 0
+
+def cmd_guard_cleanup(args):
+    root = Path(args.path).resolve()
+    try:
+        _guard._set_powershell_autoguard(root, False)
+    except Exception:
+        pass
     return 0
 
 def render_ui_page(
@@ -2413,7 +2422,8 @@ def main(argv=None):
     p_ui.add_argument("--host", default="127.0.0.1")
     p_ui.add_argument("--port", type=int, default=5200)
     p_ui.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
-    p_ui.add_argument("--open-browser", action="store_true")
+    p_ui.add_argument("--open-browser", action="store_true", default=True)
+    p_ui.add_argument("--no-open-browser", dest="open_browser", action="store_false")
     p_ui.set_defaults(func=cmd_ui)
     p_ui_shortcut=sub.add_parser("ui-shortcut", help="Create Windows desktop .bat launcher for SafeDeps UI")
     p_ui_shortcut.set_defaults(func=cmd_ui_shortcut)
@@ -2422,6 +2432,9 @@ def main(argv=None):
     p_setup.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
     p_setup.add_argument("--force", action="store_true")
     p_setup.set_defaults(func=cmd_setup)
+    p_guard_cleanup=sub.add_parser("guard-cleanup", help=argparse.SUPPRESS)
+    p_guard_cleanup.add_argument("path", nargs="?", default=".")
+    p_guard_cleanup.set_defaults(func=cmd_guard_cleanup)
     args=parser.parse_args(argv)
     return args.func(args)
 

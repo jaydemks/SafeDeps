@@ -1,4 +1,4 @@
-# SafeDeps 0.2.8 - Update Notes (2026-05-26)
+# SafeDeps 0.2.9 - Update Notes (2026-05-26)
 
 ## Summary
 
@@ -39,6 +39,10 @@ Post-release stabilization update focused on Windows guard reliability and UI be
   - `safedeps ui` now defaults to a dedicated workspace (`~/.safedeps/workspace`) to avoid scattered generated files
   - UI server now auto-falls forward across local ports when the requested port is blocked
   - new Windows helper command `safedeps ui-shortcut` creates a desktop `.bat` launcher
+- Guard lifecycle reliability fixes:
+  - uninstalling `safedeps` now performs guard/profile cleanup first, then allows uninstall to proceed without self-blocking
+  - wrappers now fail-open automatically when `safedeps` is no longer importable
+  - reinstall/setup now re-synchronizes persisted Auto Guard state, so UI toggle and real profile state stay aligned
 
 ## Documentation Alignment
 

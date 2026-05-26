@@ -38,7 +38,18 @@ PROJECT_ROOT="{root_posix}"
 GUARD_STATE_FILE="{guard_state_posix}"
 EXPECTED_VENV="{expected_venv_posix}"
 
+if ! "${{REAL_PY}}" -c "import safedeps" >/dev/null 2>&1; then
+  exec "${{REAL_PY}}" -m pip "$@"
+fi
+
 if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "uninstall" ] || [ "${{1:-}}" = "download" ]; then
+  if [ "${{1:-}}" = "uninstall" ]; then
+    ARGS_STR="$*"
+    if echo "$ARGS_STR" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
+      "${{REAL_PY}}" -m safedeps.cli guard-cleanup "$PROJECT_ROOT" >/dev/null 2>&1 || true
+      exec "${{REAL_PY}}" -m pip "$@"
+    fi
+  fi
   scope="project"
   if [ -f "$GUARD_STATE_FILE" ] && grep -q '"protection_scope"[[:space:]]*:[[:space:]]*"global"' "$GUARD_STATE_FILE"; then
     scope="global"
@@ -81,12 +92,14 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "uninstall" ] || [ "${{1:-}}" = 
     done
     set -- install "$@"
   fi
-  ARGS_STR="$*"
-  if echo "$ARGS_STR" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
-    if [ -z "$OFFICIAL_SAFEDEPS_GIT" ] || ! echo "$ARGS_STR" | grep -Fq "$OFFICIAL_SAFEDEPS_GIT"; then
-      echo "Blocked: SafeDeps updates are allowed only from official Git source."
-      [ -n "$OFFICIAL_SAFEDEPS_GIT" ] && echo "Allowed source: $OFFICIAL_SAFEDEPS_GIT"
-      exit 2
+  if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "download" ]; then
+    ARGS_STR="$*"
+    if echo "$ARGS_STR" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
+      if [ -z "$OFFICIAL_SAFEDEPS_GIT" ] || ! echo "$ARGS_STR" | grep -Fq "$OFFICIAL_SAFEDEPS_GIT"; then
+        echo "Blocked: SafeDeps updates are allowed only from official Git source."
+        [ -n "$OFFICIAL_SAFEDEPS_GIT" ] && echo "Allowed source: $OFFICIAL_SAFEDEPS_GIT"
+        exit 2
+      fi
     fi
   fi
   if ! "${{REAL_PY}}" -m safedeps.cli scan . --fail-on {fail_on}; then
@@ -112,6 +125,21 @@ $OfficialGit = "{official_repo}"
 $ProjectRoot = "{str(root)}"
 $GuardStateFile = "{str(root / '.safedeps' / 'guard-state.json')}"
 $ExpectedVenv = "{expected_venv}"
+
+& "{real_python}" -c "import safedeps" *> $null
+if ($LASTEXITCODE -ne 0) {{
+  & "{real_python}" -m pip @PipArgs
+  exit $LASTEXITCODE
+}}
+
+if ($PipArgs.Length -gt 0 -and $PipArgs[0].ToLower() -eq "uninstall") {{
+  $argsLine = [string]::Join(" ", $PipArgs)
+  if ($argsLine -match "(^|\\s)safedeps(\\s|$)") {{
+    & "{real_python}" -m safedeps.cli guard-cleanup "{str(root)}" *> $null
+    & "{real_python}" -m pip @PipArgs
+    exit $LASTEXITCODE
+  }}
+}}
 
 $isInstall = $false
 if ($PipArgs.Length -gt 0 -and $PipArgs[0].ToLower() -eq "install") {{
@@ -182,6 +210,18 @@ exit $LASTEXITCODE
     official_repo_cmd = official_repo.replace('"', '')
     pip_cmd = f"""@echo off
 setlocal EnableExtensions
+("{real_python}" -c "import safedeps" >nul 2>nul) || (
+  "{real_python}" -m pip %*
+  exit /b %ERRORLEVEL%
+)
+if /I "%~1"=="uninstall" (
+  echo %* | findstr /I /R "\\<safedeps\\>" >nul
+  if not errorlevel 1 (
+    "{real_python}" -m safedeps.cli guard-cleanup "{str(root)}" >nul 2>nul
+    "{real_python}" -m pip %*
+    exit /b %ERRORLEVEL%
+  )
+)
 set "_should_guard=0"
 if /I "%~1"=="install" (
   set "_should_guard=1"
@@ -322,9 +362,19 @@ OFFICIAL_SAFEDEPS_GIT="{official_repo}"
 PROJECT_ROOT="{root_posix}"
 GUARD_STATE_FILE="{guard_state_posix}"
 EXPECTED_VENV="{expected_venv_posix}"
+if ! "${{REAL_PY}}" -c "import safedeps" >/dev/null 2>&1; then
+  exec "${{REAL_PY}}" "$@"
+fi
 if [ "${{1:-}}" = "-m" ] && [ "${{2:-}}" = "pip" ]; then
   sub="${{3:-}}"
   if [ "$sub" = "install" ] || [ "$sub" = "uninstall" ] || [ "$sub" = "download" ]; then
+    if [ "$sub" = "uninstall" ]; then
+      ARGS_STR="$*"
+      if echo "$ARGS_STR" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
+        "${{REAL_PY}}" -m safedeps.cli guard-cleanup "$PROJECT_ROOT" >/dev/null 2>&1 || true
+        exec "${{REAL_PY}}" "$@"
+      fi
+    fi
     scope="project"
     if [ -f "$GUARD_STATE_FILE" ] && grep -q '"protection_scope"[[:space:]]*:[[:space:]]*"global"' "$GUARD_STATE_FILE"; then
       scope="global"
@@ -392,6 +442,21 @@ $ProjectRoot = "{str(root)}"
 $GuardStateFile = "{str(root / '.safedeps' / 'guard-state.json')}"
 $ExpectedVenv = "{expected_venv}"
 
+& "{real_python}" -c "import safedeps" *> $null
+if ($LASTEXITCODE -ne 0) {{
+  & "{real_python}" @PyArgs
+  exit $LASTEXITCODE
+}}
+
+if ($PyArgs.Length -ge 3 -and $PyArgs[0] -eq "-m" -and $PyArgs[1].ToLower() -eq "pip" -and $PyArgs[2].ToLower() -eq "uninstall") {{
+  $argsLine = [string]::Join(" ", $PyArgs)
+  if ($argsLine -match "(^|\\s)safedeps(\\s|$)") {{
+    & "{real_python}" -m safedeps.cli guard-cleanup "{str(root)}" *> $null
+    & "{real_python}" @PyArgs
+    exit $LASTEXITCODE
+  }}
+}}
+
 $shouldGuard = $false
 if ($PyArgs.Length -ge 3 -and $PyArgs[0] -eq "-m" -and $PyArgs[1].ToLower() -eq "pip") {{
   $sub = $PyArgs[2].ToLower()
@@ -443,12 +508,14 @@ if ($shouldGuard) {{
       }}
     }}
   }}
-  $argsLine = [string]::Join(" ", $PyArgs)
-  if ($argsLine -match "(^|\\s)safedeps(\\s|$)") {{
-    if ([string]::IsNullOrWhiteSpace($OfficialGit) -or ($argsLine -notlike "*$OfficialGit*")) {{
-      Write-Host "Blocked: SafeDeps updates are allowed only from official Git source."
-      if (-not [string]::IsNullOrWhiteSpace($OfficialGit)) {{ Write-Host "Allowed source: $OfficialGit" }}
-      exit 2
+  if ($sub -eq "install" -or $sub -eq "download") {{
+    $argsLine = [string]::Join(" ", $PyArgs)
+    if ($argsLine -match "(^|\\s)safedeps(\\s|$)") {{
+      if ([string]::IsNullOrWhiteSpace($OfficialGit) -or ($argsLine -notlike "*$OfficialGit*")) {{
+        Write-Host "Blocked: SafeDeps updates are allowed only from official Git source."
+        if (-not [string]::IsNullOrWhiteSpace($OfficialGit)) {{ Write-Host "Allowed source: $OfficialGit" }}
+        exit 2
+      }}
     }}
   }}
   & "{real_python}" -m safedeps.cli scan . --fail-on {fail_on}
@@ -464,6 +531,18 @@ exit $LASTEXITCODE
 """
     python_cmd = f"""@echo off
 setlocal EnableExtensions
+("{real_python}" -c "import safedeps" >nul 2>nul) || (
+  "{real_python}" %*
+  exit /b %ERRORLEVEL%
+)
+if /I "%~1"=="-m" if /I "%~2"=="pip" if /I "%~3"=="uninstall" (
+  echo %* | findstr /I /R "\\<safedeps\\>" >nul
+  if not errorlevel 1 (
+    "{real_python}" -m safedeps.cli guard-cleanup "{str(root)}" >nul 2>nul
+    "{real_python}" %*
+    exit /b %ERRORLEVEL%
+  )
+)
 set "_should_guard=0"
 if /I "%~1"=="-m" if /I "%~2"=="pip" (
   if /I "%~3"=="install" set "_should_guard=1"
@@ -499,18 +578,20 @@ if /I "%~1"=="-m" if /I "%~2"=="pip" (
           )
         )
       )
-      set "_sdargs=%*"
-      echo %_sdargs% | findstr /I /R "\\<safedeps\\>" >nul
-      if not errorlevel 1 (
-        if "{official_repo_cmd}"=="" (
-          echo Blocked: SafeDeps updates are allowed only from official Git source.
-          exit /b 2
-        ) else (
-          echo %_sdargs% | findstr /I /C:"{official_repo_cmd}" >nul
-          if errorlevel 1 (
+      if /I "%~3"=="install" (
+        set "_sdargs=%*"
+        echo %_sdargs% | findstr /I /R "\\<safedeps\\>" >nul
+        if not errorlevel 1 (
+          if "{official_repo_cmd}"=="" (
             echo Blocked: SafeDeps updates are allowed only from official Git source.
-            echo Allowed source: {official_repo_cmd}
             exit /b 2
+          ) else (
+            echo %_sdargs% | findstr /I /C:"{official_repo_cmd}" >nul
+            if errorlevel 1 (
+              echo Blocked: SafeDeps updates are allowed only from official Git source.
+              echo Allowed source: {official_repo_cmd}
+              exit /b 2
+            )
           )
         )
       )
@@ -557,6 +638,33 @@ exit /b %ERRORLEVEL%
         '$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path\n'
         '$projectRoot = Split-Path -Parent $scriptDir\n'
         '$safeDepsBin = Join-Path $projectRoot ".safedeps/bin"\n'
+        '$hasSafeDeps = $false\n'
+        'try {\n'
+        '  & python -c "import safedeps" *> $null\n'
+        '  if ($LASTEXITCODE -eq 0) { $hasSafeDeps = $true }\n'
+        '} catch {}\n'
+        'if (-not $hasSafeDeps) {\n'
+        '  $markerStart = "# >>> SafeDeps Auto Guard >>>"\n'
+        '  $markerEnd = "# <<< SafeDeps Auto Guard <<<"\n'
+        '  $profiles = @(\n'
+        '    (Join-Path $HOME "Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1"),\n'
+        '    (Join-Path $HOME "Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1")\n'
+        '  )\n'
+        '  foreach ($p in $profiles) {\n'
+        '    if (Test-Path $p) {\n'
+        '      $c = Get-Content $p -Raw\n'
+        '      $rx = [regex]::Escape($markerStart) + ".*?" + [regex]::Escape($markerEnd) + "\\r?\\n?"\n'
+        '      $nc = [regex]::Replace($c, $rx, "", "Singleline")\n'
+        '      if ($nc -ne $c) { Set-Content $p $nc }\n'
+        '    }\n'
+        '  }\n'
+        '  Remove-Item Function:\\pip -ErrorAction SilentlyContinue\n'
+        '  Remove-Item Function:\\pip3 -ErrorAction SilentlyContinue\n'
+        '  Remove-Item Function:\\python -ErrorAction SilentlyContinue\n'
+        '  Remove-Item Function:\\python3 -ErrorAction SilentlyContinue\n'
+        '  Remove-Item Function:\\npm -ErrorAction SilentlyContinue\n'
+        '  return\n'
+        '}\n'
         '$env:PATH = "$safeDepsBin;$env:PATH"\n'
         'Remove-Item Function:\\pip -ErrorAction SilentlyContinue\n'
         'Remove-Item Function:\\pip3 -ErrorAction SilentlyContinue\n'
@@ -584,7 +692,14 @@ exit /b %ERRORLEVEL%
     _state = _load_guard_state(root)
     if "protection_scope" not in _state or not _state.get("protection_scope"):
         _state["protection_scope"] = default_scope
+    auto_guard = bool(_state.get("auto_guard_powershell", False))
     _write_guard_state(root, _state)
+    # Reconcile persisted auto-guard state on reinstall/setup so UI toggle remains truthful.
+    if auto_guard:
+        try:
+            _set_powershell_autoguard(root, True)
+        except Exception:
+            pass
     print(f"- Protection scope default: {_state['protection_scope']}")
     print(f"- Activate in bash/zsh: source {activate}")
     print(f"- Activate in PowerShell: . {activate_ps1}")
