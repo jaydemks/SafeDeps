@@ -6,6 +6,17 @@ It checks your project dependencies before install/update and can block risky ch
 
 It works with Python, npm, NuGet, and Git dependency definitions.
 
+You can use SafeDeps in two ways:
+
+- Terminal/CLI mode (`safedeps scan`, `safedeps setup`, `safedeps help`, etc.)
+- Web UI mode (recommended for guided usage)
+
+Open the UI with:
+
+```bash
+python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
+```
+
 > Status note (May 2026): public package publishing is not completed yet for PyPI, npm, and NuGet.  
 > We are finishing test coverage and release validation before publishing.
 
