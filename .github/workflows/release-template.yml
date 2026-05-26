@@ -139,8 +139,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-    environment:
-      name: pypi
     steps:
       - name: Download Python dist
         uses: actions/download-artifact@v4
@@ -167,8 +165,17 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+      - name: Verify npm tarball
+        run: |
+          ls -la npm-dist
+          TAR="$(ls -1 npm-dist/*.tgz | head -n 1)"
+          if [ -z "${TAR:-}" ] || [ ! -f "$TAR" ]; then
+            echo "npm tarball not found in npm-dist/"
+            exit 1
+          fi
+          echo "NPM_TARBALL=$TAR" >> "$GITHUB_ENV"
       - name: Publish to npm (Trusted Publishing)
-        run: npm publish npm-dist/*.tgz --access public --provenance
+        run: npm publish "$NPM_TARBALL" --access public --provenance
 
   publish-nuget:
     if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
