@@ -1,5 +1,7 @@
 # SafeDeps
 
+![SafeDeps Banner](docs/images/safedeps_banner.png)
+
 SafeDeps is a dependency safety gate.
 
 It checks your project dependencies before install/update and can block risky changes (for example vulnerable, untrusted, or floating versions).
