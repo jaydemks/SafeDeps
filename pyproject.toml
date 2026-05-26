@@ -29,5 +29,8 @@ dev = [
 [project.scripts]
 safedeps = "safedeps.cli:main"
 
+[tool.setuptools]
+license-files = []
+
 [tool.setuptools.packages.find]
 include = ["safedeps*"]
