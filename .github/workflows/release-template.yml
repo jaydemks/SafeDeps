@@ -163,9 +163,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install twine
           python -m twine upload --non-interactive -u __token__ -p "${PYPI_API_TOKEN}" dist/*
-      - name: Publish to PyPI (Trusted Publishing)
+      - name: Skip PyPI publish (missing token)
         if: ${{ steps.pypi_token.outputs.has_pypi_token == 'false' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
+        run: |
+          echo "PYPI_API_TOKEN is not configured. Skipping PyPI publish."
 
   publish-npm:
     if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
@@ -208,9 +209,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish "$NPM_TARBALL" --access public --provenance
-      - name: Publish to npm (Trusted Publishing)
+      - name: Skip npm publish (missing token)
         if: ${{ steps.npm_token.outputs.has_npm_token == 'false' }}
-        run: npm publish "$NPM_TARBALL" --access public --provenance
+        run: |
+          echo "NPM_TOKEN is not configured. Skipping npm publish."
 
   publish-nuget:
     if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
