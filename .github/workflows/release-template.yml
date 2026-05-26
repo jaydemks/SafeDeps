@@ -145,8 +145,18 @@ jobs:
         with:
           name: python-dist
           path: dist/
+      - name: Detect PyPI token
+        id: pypi_token
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -n "${PYPI_API_TOKEN:-}" ]; then
+            echo "has_pypi_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pypi_token=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish to PyPI (API token fallback)
-        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        if: ${{ steps.pypi_token.outputs.has_pypi_token == 'true' }}
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
@@ -154,7 +164,7 @@ jobs:
           python -m pip install twine
           python -m twine upload --non-interactive -u __token__ -p "${PYPI_API_TOKEN}" dist/*
       - name: Publish to PyPI (Trusted Publishing)
-        if: ${{ secrets.PYPI_API_TOKEN == '' }}
+        if: ${{ steps.pypi_token.outputs.has_pypi_token == 'false' }}
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-npm:
