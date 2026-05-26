@@ -162,7 +162,8 @@ jobs:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python -m pip install --upgrade pip
-          python -m pip install twine
+          python -m pip install --upgrade twine pkginfo
+          python -m twine check dist/*
           python -m twine upload --non-interactive -u __token__ -p "${PYPI_API_TOKEN}" dist/*
       - name: Skip PyPI publish (missing token)
         if: ${{ steps.pypi_token.outputs.has_pypi_token == 'false' }}
