@@ -145,7 +145,16 @@ jobs:
         with:
           name: python-dist
           path: dist/
+      - name: Publish to PyPI (API token fallback)
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine
+          python -m twine upload --non-interactive -u __token__ -p "${PYPI_API_TOKEN}" dist/*
       - name: Publish to PyPI (Trusted Publishing)
+        if: ${{ secrets.PYPI_API_TOKEN == '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-npm:
@@ -168,7 +177,7 @@ jobs:
       - name: Verify npm tarball
         run: |
           ls -la npm-dist
-          TAR="$(ls -1 npm-dist/*.tgz | head -n 1)"
+          TAR="$(realpath "$(ls -1 npm-dist/*.tgz | head -n 1)")"
           if [ -z "${TAR:-}" ] || [ ! -f "$TAR" ]; then
             echo "npm tarball not found in npm-dist/"
             exit 1
