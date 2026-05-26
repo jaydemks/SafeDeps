@@ -17,8 +17,14 @@ Open the UI with:
 python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
 ```
 
-> Status note (May 2026): public package publishing is not completed yet for PyPI, npm, and NuGet.  
-> We are finishing test coverage and release validation before publishing.
+Install from PyPI (recommended for standard usage):
+
+```bash
+pip install safedeps
+```
+
+> Status note (May 2026): PyPI publishing is now available.  
+> npm and NuGet publishing are still being finalized.
 
 ## Start In 60 Seconds
 
@@ -128,10 +134,10 @@ UI full guide: `docs/UI_DOCUMENTATION.md`
 - npm distribution: wrapper package present in `packages/npm-wrapper`
 - .NET global tool wrapper: implemented in `packages/dotnet-tool`
 - Publish status:
-  - PyPI: not published yet
+  - PyPI: published (installable with `pip install safedeps`)
   - npm: not published yet
   - NuGet: not published yet
-  - Target: publish only after test completion and release checks pass
+  - Target: finalize npm/NuGet publishing after release validation checks pass
 - Security outputs:
   - `security-artifacts/safedeps-report.json`
   - `security-artifacts/safedeps-sbom.json`
@@ -460,7 +466,7 @@ Use trusted publishing/OIDC whenever available.
 Run local preflight checks before triggering a release:
 
 ```bash
-python scripts/release/preflight.py --expected-version 0.2.6
+python scripts/release/preflight.py --expected-version 0.2.7
 ```
 
 Release workflow template:

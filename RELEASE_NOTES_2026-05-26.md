@@ -1,4 +1,4 @@
-# SafeDeps 0.2.6 - Update Notes (2026-05-26)
+# SafeDeps 0.2.7 - Update Notes (2026-05-26)
 
 ## Summary
 
@@ -32,6 +32,9 @@ Post-release stabilization update focused on Windows guard reliability and UI be
   - dependency list remains visible after dependency action errors and now shows clearer user-facing error messages
 - Registry publishing update:
   - npm wrapper package renamed to scoped name `@jaydemks/safedeps` to avoid unscoped registry name collisions
+- Release channel update:
+  - PyPI installation is now active for SafeDeps (`pip install safedeps`)
+  - npm and NuGet publishing remain in progressive rollout
 
 ## Documentation Alignment
 
