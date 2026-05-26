@@ -1,219 +1,102 @@
-# SafeDeps Roadmap (Frontier Track)
+# SafeDeps Roadmap (Next)
 
-## Mission
+This roadmap tracks the next practical milestones after the recent runtime-guard and UI stabilization work.
 
-Build SafeDeps into a frontier-level, open-source dependency security gate that any developer can adopt quickly across ecosystems, locally and in CI.
+## Guiding Priorities
 
-## Current Baseline (as of 2026-05-23)
+1. Security-first behavior stays the default.
+2. UX must remain understandable for non-expert users.
+3. Cross-platform reliability (Windows, Linux, macOS) is mandatory.
 
-- Python CLI core is available.
-- npm wrapper package exists.
-- .NET wrapper package exists (`packages/dotnet-tool`).
-- Core checks are functional for common unsafe dependency patterns.
+## Track A - Validation And Hardening
 
-## Milestone M1: Engine Completeness
+### A1. Deep Test Coverage For Not-Yet-Validated Flows
 
-- Python:
-  - `pyproject.toml`
-  - `poetry.lock`
-  - `uv.lock`
-  - `Pipfile.lock`
-  - hash enforcement with `--require-hashes`
-- npm:
-  - `package-lock.json`
-  - `pnpm-lock.yaml`
-  - `yarn.lock`
-  - workspace/monorepo support
-- NuGet:
-  - `Directory.Packages.props`
-  - `packages.config`
-  - central package management
-  - lockfile validation
-- Containers/CI:
-  - Dockerfile and Compose dependency extraction
-  - GitHub Actions workflow dependency scanning
+- Expand end-to-end validation for npm runtime guard.
+- Expand end-to-end validation for NuGet/.NET runtime flows.
+- Add cross-shell validation matrix:
+  - PowerShell
+  - CMD
+  - Bash
+- Add regression suite for:
+  - toggle behavior (`Auto ON/OFF`, `Project/Global`)
+  - no-full-reload UI behavior
+  - wrapper regeneration and activation paths
 
-Definition of done:
+### A2. Security Regression Guardrails
 
-- Parser coverage tests for each format.
-- Deterministic findings across Linux/macOS/Windows test matrix.
+- Add integration tests to ensure unpinned installs are blocked where expected.
+- Add tests for "Project" vs "Global" scope boundaries.
+- Add tests for self-update/source restrictions and known bypass paths.
 
-### M1 Closure For v0.2.x (2026-05-22)
+## Track B - Install/Uninstall UX Simplification
 
-Completed in this cycle:
+### B1. Guided Dependency Operations (UI)
 
-- Python parsers: `pyproject.toml`, `poetry.lock`, `uv.lock`, `Pipfile.lock`.
-- npm parsers: `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`.
-- npm workspace/monorepo lockfile resolution across nested `package.json`.
-- NuGet parsers: `.csproj`, `Directory.Packages.props`, `packages.config`, `packages.lock.json`.
-- CI baseline quality gates (version consistency + tests + scan + artifacts).
+- Improve install/update/uninstall workflows with clearer pre-check status.
+- Add explicit operation states per row:
+  - validating
+  - blocked
+  - applied
+- Add clearer user-facing reason messages when an operation is denied.
 
-Deferred from M1 to next cycles:
+### B2. Safer Bulk Operations (Candidate)
 
-- Python hash enforcement with `--require-hashes`.
-- Dockerfile and Docker Compose dependency extraction.
-- Dedicated GitHub Actions workflow-dependency parsing (beyond CI pipeline usage).
-- Cross-OS deterministic matrix execution evidence.
+- Evaluate bulk safe update flow (batch mode) with strict pre/post checks.
+- Evaluate staged uninstall workflow with impact preview before confirmation.
 
-## Milestone M2: Supply-Chain Intelligence
+## Track C - Security Features (Candidate)
 
-- Typosquatting signals.
-- Package age and publish churn checks.
-- Maintainer/publisher change detection.
-- Trusted source model and metadata cache.
-- Malicious package feed integration.
-- Signature/hash verification where supported.
-- Strict offline mode.
+### C1. Stronger Trust Signals
 
-Definition of done:
+- Add optional package-age policy defaults by manager.
+- Add optional maintainer/publisher risk heuristics with explainable output.
+- Improve suspicious package pattern detection and confidence scoring.
 
-- Low false-positive baseline on fixture corpus.
-- Policy controls available for each signal.
+### C2. Policy And Exception Governance
 
-### M2 Status (Kickoff 2026-05-22)
+- Add stronger exception lifecycle controls:
+  - mandatory reason format
+  - expiry reminders
+  - audit trail metadata
+- Add optional policy presets (`strict`, `balanced`, `learning`).
 
-- Implemented first intelligence signal:
-  - typosquatting risk detection (`TYPOSQUATTING_RISK`) for pip/npm/nuget package names.
-- Implemented vulnerability baseline suppression support (`.safedeps/vuln-baseline.json`) with stable finding fingerprint matching.
-- Implemented local vulnerability feed adapter (`.safedeps/vuln-feed.json`) with severity normalization.
-- Extended local vulnerability feed adapter with OSV-style record ingestion (`vulnerabilities_osv`).
-- Implemented second intelligence signal set (offline-first):
-  - package age risk (`PACKAGE_TOO_NEW`) from local metadata cache
-  - publisher churn risk (`PUBLISHER_CHURN`) from local metadata cache
-- Implemented maintainer/publisher change detection (offline-first):
-  - maintainer transfer/change risk (`MAINTAINER_CHANGE_RISK`) from local metadata cache
-- Added policy controls:
-  - `enable_typosquat_detection`
-  - `protected_packages`
-  - `enable_package_age_checks`
-  - `min_package_age_days`
-  - `enable_publisher_churn_checks`
-  - `max_publisher_changes_90d`
-  - `enable_maintainer_change_checks`
-  - `max_maintainer_changes_180d`
+### C3. Supply-Chain Verification (Research)
 
-## Milestone M3: Vulnerability Correlation
+- Evaluate signature/provenance verification options where ecosystem supports it.
+- Evaluate checksum enforcement workflow for approved dependency sources.
 
-- OSV.dev integration.
-- GitHub Advisory integration.
-- NuGet vulnerability endpoint integration.
-- npm audit normalization.
-- pip-audit integration.
-- Vulnerability baseline and expiring allowlist.
+## Track D - Documentation And Adoption
 
-Definition of done:
+### D1. User Docs
 
-- Unified severity model.
-- Reproducible scan output with stable IDs.
+- Keep README and UI docs synchronized with actual behavior each release.
+- Add "UI action -> equivalent CLI command" mapping table.
+- Add troubleshooting decision tree for common shell/wrapper issues.
 
-## Milestone M4: CI and Compliance Outputs
+### D2. Release Quality Gates
 
-- Official GitHub Action.
-- GitLab and Azure templates.
-- SARIF export.
-- CycloneDX SBOM export.
-- SPDX SBOM export.
-- Signed release artifacts and provenance (SLSA-oriented).
+- Define minimum validation checklist required before PyPI/npm/NuGet publish.
+- Enforce release checklist in CI for version alignment + smoke tests.
 
-Definition of done:
+## Near-Term Milestones
 
-- End-to-end CI examples in `examples/ci`.
-- Artifact validation tests.
+### Milestone 1 (Next)
 
-### M4 Status (Kickoff 2026-05-22)
+- Complete npm and NuGet deep validation.
+- Stabilize any remaining wrapper edge cases.
+- Publish updated docs for tested vs pending-tested flows.
 
-- Implemented initial SARIF export support from CLI scan via `--sarif`.
-- Implemented initial CycloneDX JSON export support from CLI scan via `--cyclonedx`.
-- Implemented initial SPDX JSON export support from CLI scan via `--spdx`.
-- Hardened report exporters with component deduplication and richer metadata.
-- Implemented CI templates in `examples/ci/` for GitHub/GitLab/Azure.
-- Added automated artifact structure validation (`scripts/validate_artifacts.py`) in CI.
+### Milestone 2
 
-## Milestone M5: Developer UX
+- Improve guided dependency actions UX and denial explanations.
+- Add regression tests for all critical runtime guard scenarios.
 
-- HTML report.
-- `safedeps explain <finding>`.
-- `safedeps approve --expires YYYY-MM-DD`.
-- `safedeps doctor`.
-- `safedeps baseline`.
-- Pre-commit integration.
+### Milestone 3
 
-Definition of done:
+- Introduce selected candidate security features from Track C after feasibility review.
 
-- Each UX command documented with examples.
-- Golden tests for command output stability.
+## Notes
 
-### M5 Status (Progress 2026-05-22)
-
-- Implemented commands:
-  - `safedeps doctor <path>`
-  - `safedeps explain <finding_rule>`
-  - `safedeps baseline <path> [--report ...] [--output ...]`
-  - `safedeps approve <path> --manager ... --rule ... --expires YYYY-MM-DD`
-- Implemented outputs/integration:
-  - HTML report export via `safedeps scan --html ...`
-  - repository pre-commit hook integration via `.pre-commit-config.yaml`
-- Implemented test stability coverage:
-  - command output stability tests for `doctor` and `explain`.
-- Extended golden output coverage:
-  - output stability tests for `scan`, `baseline`, and `approve`.
-- Remaining to complete M5:
-  - optional fixture-driven golden snapshots for larger multi-finding scan outputs.
-
-## Milestone M6: Distribution and Adoption
-
-- PyPI publication pipeline.
-- npm trusted publishing pipeline.
-- .NET global tool package and NuGet publication pipeline.
-- Versioning/release automation and changelog discipline.
-
-Definition of done:
-
-- Public install works for `pip`, `npm`, and `dotnet`.
-- Signed/tagged release process fully automated.
-
-### M6 Status (Kickoff 2026-05-22)
-
-- Added release preflight script:
-  - `scripts/release/preflight.py`
-  - validates cross-package version alignment and required release files.
-- Added GitHub release workflow template:
-  - `.github/workflows/release-template.yml`
-  - preflight + Python build artifact + npm wrapper artifact.
-- Added release process documentation:
-  - `docs/release/RELEASE_PROCESS.md`
-- Implemented .NET global tool wrapper:
-  - `packages/dotnet-tool/SafeDeps.Tool.csproj`
-  - `packages/dotnet-tool/Program.cs`
-- Added .NET package build job to release workflow template:
-  - outputs `.nupkg` artifact for NuGet publish stage.
-- Added gated publish stages in release workflow template:
-  - `publish-pypi` (OIDC trusted publishing)
-  - `publish-npm` (provenance publish)
-  - `publish-nuget` (conditional on `NUGET_API_KEY`)
-- Added stricter release preflight gates:
-  - `--expected-version` alignment with workflow input
-  - `--require-tag` validation for publish runs (`vX.Y.Z`)
-- Added release artifact integrity manifest stage:
-  - deterministic SHA256 manifest for Python/npm/NuGet release outputs.
-- Added tag-driven release closure automation:
-  - trigger on `v*` tags
-  - build provenance attestation
-  - GitHub Release creation with attached artifacts + manifest.
-- Remaining to complete M6:
-  - production secret/environment wiring for publish jobs
-  - NuGet package signing hardening in pipeline.
-
-### Repo Completion Note (2026-05-23)
-
-- Code and workflow implementation in this repository is effectively complete for the planned frontier track.
-- Remaining items are external operational setup:
-  - production secrets/environment configuration in GitHub
-  - final NuGet signing posture
-  - final full verification pass across release environments.
-
-## Execution Rules
-
-- All work must be incremental, ordered, and test-backed.
-- Documentation must stay aligned to implemented behavior.
-- Release notes must be updated on every meaningful change.
+- Items marked as candidate/research require feasibility validation before commitment.
+- Security and runtime correctness always take precedence over new feature speed.

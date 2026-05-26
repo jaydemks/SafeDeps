@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from safedeps.models import Finding
-from safedeps.scanners.base import Scanner
+from safedeps.scanners.base import Scanner, iter_files, path_is_excluded
 from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
 from safedeps.scanners.typosquat import typosquat_finding
 
@@ -20,7 +20,9 @@ class NugetScanner(Scanner):
         has_nuget_manifest = False
         signals = MetadataSignals.load(root)
 
-        for csproj in root.rglob("*.csproj"):
+        for csproj in iter_files(root, "*.csproj"):
+            if path_is_excluded(root, csproj, policy):
+                continue
             has_nuget_manifest = True
             try:
                 tree = ET.parse(csproj)
@@ -45,14 +47,18 @@ class NugetScanner(Scanner):
             has_nuget_manifest = True
             self._scan_directory_packages_props(props, policy, findings, components, signals)
 
-        packages_config_files = list(root.rglob("packages.config"))
+        packages_config_files = list(iter_files(root, "packages.config"))
         if packages_config_files:
             has_nuget_manifest = True
         for pconfig in packages_config_files:
+            if path_is_excluded(root, pconfig, policy):
+                continue
             self._scan_packages_config(pconfig, root, policy, findings, components, signals)
 
-        lockfiles = list(root.rglob("packages.lock.json"))
+        lockfiles = list(iter_files(root, "packages.lock.json"))
         for lockfile in lockfiles:
+            if path_is_excluded(root, lockfile, policy):
+                continue
             self._scan_packages_lock(lockfile, root, policy, findings, components, signals)
 
         for cfg in [root / "NuGet.Config", root / "nuget.config"]:
@@ -63,7 +69,7 @@ class NugetScanner(Scanner):
                     if url.startswith("http") and url not in policy.data["allowed_registries"].get("nuget", []):
                         findings.append(Finding("CRITICAL", "nuget", "UNTRUSTED_REGISTRY", f"NuGet source not in allowlist: {url}", cfg.name, fix="Use approved source or add a temporary exception."))
 
-        if policy.data.get("require_lockfiles", True) and has_nuget_manifest and not any(root.rglob("packages.lock.json")):
+        if policy.data.get("require_lockfiles", True) and has_nuget_manifest and not any(iter_files(root, "packages.lock.json")):
             findings.append(Finding("MEDIUM", "nuget", "MISSING_LOCKFILE", ".NET project found but no packages.lock.json detected.", fix="Enable RestorePackagesWithLockFile and commit packages.lock.json."))
 
         return findings, components

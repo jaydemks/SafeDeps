@@ -1,363 +1,264 @@
 # SafeDeps UI - Practical User Guide
 
-This guide explains the UI in plain language: what to type, what to click, and what happens next.
+This guide explains the current UI workflow in plain language.
 
-## 1. How To Open The UI
+## Open The UI
 
-From your project folder, run:
-
-```bash
-safedeps ui . --open-browser
-```
-
-If the browser does not open automatically, open this URL manually:
-
-- `http://127.0.0.1:8765/`
-
-If port `8765` is already in use, run:
+Recommended command:
 
 ```bash
-safedeps ui . --host 127.0.0.1 --port 8877
+python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
 ```
 
-Then open:
+URL:
 
 - `http://127.0.0.1:8877/`
 
-Important:
+## Light/Dark Theme
 
-- Open the root path `/` (example: `http://127.0.0.1:8765/`).
+- Click `Theme` in the top-right corner.
+- The UI remembers your choice in the browser.
 
-## 2. What You See On The Page
+## Auto Guard + Scope (PowerShell)
 
-The UI is split into blocks:
+At the top of the UI you now have:
 
-1. `Setup Project Guard`
-2. `Run Scan`
-3. `Explain Rule`
-4. `Create Baseline`
-5. `Add/Update Approval`
-6. `Intelligence Settings`
-7. Results area (status, errors, findings table)
+- `Auto ON` / `Auto OFF`
+- `Project` / `Global`
 
-## 3. Setup Project Guard
+What it does:
 
-### What it is for
+- `Auto ON`: adds SafeDeps activation to your PowerShell profile (new PowerShell sessions load guard automatically).
+- `Auto OFF`: removes that profile hook.
+- `Project`: guard applies only in project context.
+- `Global`: guard applies globally.
 
-Prepares your project so `pip install` can be protected by SafeDeps checks.
+The header cards show:
 
-### What to do
+- setup status
+- auto-guard status
+- current shell guard status
 
-- Click `Setup Project Guard`.
+## Recommended Workflow
 
-### What happens
+1. Click `Setup Project Guard` (first time per project).
+2. In `Run Scan`, keep `Project path` as `.` and `Fail on` as `HIGH`.
+3. Click `Run Scan`.
+4. Review `Dependency View And Quick Actions`.
+5. Use quick actions or policy editor.
+6. Re-run scan to confirm result.
 
-- SafeDeps creates/updates files in `.safedeps/`.
-- The UI shows a confirmation message.
+Note:
 
-When to use it:
+- By default, repository sample fixtures under `examples/` are excluded from scans via policy (`exclude_paths`) to keep real-project checks cleaner.
 
-- First time on a new project.
-- Any time you think setup files were removed or changed.
+## Section 1: Run Scan
 
-## 4. Run Scan Section (Main Workflow)
+### Project path
 
-### Field: Project path
+- Folder to scan.
+- Example: `.` or `examples/bad-project`.
 
-What to enter:
+### Fail on
 
-- The folder you want to scan.
+- Threshold that marks scan as failed.
+- Example: `HIGH` means `HIGH` and `CRITICAL` findings block.
 
-Examples:
+### Output dir
 
-- `.` -> scans the current folder.
-- `examples/bad-project` -> scans that demo project.
+- Where report files are saved.
+- Example: `security-artifacts`.
 
-### Field: Fail on
+### Policy file (optional)
 
-What it means:
+- Custom policy file path.
+- Example: `.safedeps/policy.json`.
 
-- Sets the severity threshold that makes the scan fail.
+### Optional export paths
 
-Example:
+- SARIF, CycloneDX, SPDX, HTML.
+- If left empty, that export is not produced.
 
-- If you choose `HIGH`, `HIGH` and `CRITICAL` findings fail the scan.
-- If you choose `CRITICAL`, a `HIGH` finding does not fail the scan.
+### Online audit
 
-### Field: Output dir
+- Enables extra online audit checks when available.
 
-What to enter:
+### Run Scan
 
-- Folder where reports and SBOM files will be saved.
+After click:
 
-Examples:
-
-- `security-artifacts` (default)
-- `security-artifacts-mytest` to keep outputs separate
-
-### Field: Policy file (optional)
-
-What to enter:
-
-- Path to a custom policy file.
-
-Example:
-
-- `.safedeps/policy.json`
-
-If left empty:
-
-- SafeDeps uses the default project policy behavior.
-
-### Optional export fields
-
-- `SARIF path (optional)`
-- `CycloneDX path (optional)`
-- `SPDX path (optional)`
-- `HTML path (optional)`
-
-Useful examples:
-
-- `security-artifacts/safedeps.sarif`
-- `security-artifacts/safedeps.cdx.json`
-- `security-artifacts/safedeps.spdx.json`
-- `security-artifacts/safedeps-report.html`
-
-If left empty:
-
-- That export format is not generated.
-
-### Checkbox: Online audit
-
-Turn it on when:
-
-- You want extra audit checks that use available online ecosystem data.
-
-Leave it off when:
-
-- You want local/offline behavior.
-
-### Button: Run Scan
-
-What happens after click:
-
-- The scan starts.
 - You get `PASS` or `FAIL`.
-- You see finding count and details table.
-- Files are written to the output folder.
+- Findings table appears.
+- Dependency table is populated.
 
-## 5. Explain Rule
+## Section 2: Dependency View And Quick Actions
 
-### Field: Explain rule
+This is the central user-friendly table.
 
-What to enter:
+Columns:
 
-- The rule code you want to understand.
-
-Examples:
-
-- `FLOATING_VERSION`
-- `MISSING_LOCKFILE`
-- `UNTRUSTED_REGISTRY`
-
-### Button: Explain Rule
-
-What happens:
-
-- The UI shows a plain explanation of that rule.
-
-When to use it:
-
-- When a finding appears and you want to understand why.
-
-## 6. Create Baseline
-
-### What it is for
-
-Creates a baseline file from an existing scan report.
-
-### Field: Report path
-
-What to enter:
-
-- The report JSON to read.
-
-Example:
-
-- `security-artifacts/safedeps-report.json`
-
-### Field: Baseline output path
-
-What to enter:
-
-- Where to save the baseline file.
-
-Example:
-
-- `.safedeps/vuln-baseline.json`
-
-### Button: Create Baseline
-
-What happens:
-
-- UI reads findings from the report.
-- UI writes suppression entries to baseline output.
-
-## 7. Add/Update Approval
-
-Use this section to add targeted, expiring exceptions.
-
-### Field: Baseline file
-
-Example:
-
-- `.safedeps/vuln-baseline.json`
-
-### Field: Manager
-
-Examples:
-
-- `npm`
-- `pip`
-- `nuget`
-- `git`
-
-### Field: Rule
-
-Example:
-
-- `FLOATING_VERSION`
-
-### Field: Package (optional)
-
-Example:
-
-- `lodash`
-
-If left empty:
-
-- Exception is less specific.
-
-### Field: File (optional)
-
-Example:
-
-- `package.json`
-
-### Field: Expires (YYYY-MM-DD)
-
-Valid example:
-
-- `2026-12-31`
-
-If date is invalid:
-
-- UI returns an error.
-
-### Button: Add/Update Approval
-
-What happens:
-
-- Entry is added (or updated) in the baseline file.
-
-### Button in findings table: Use For Approval
-
-Recommended usage:
-
-1. Run a scan.
-2. In a finding row, click `Use For Approval`.
-3. `Manager`, `Rule`, `Package`, and `File` are auto-filled.
-4. Enter only `Expires`.
-5. Click `Add/Update Approval`.
-
-## 8. Intelligence Settings
-
-Use this area to manage local JSON intelligence without leaving the UI.
-
-### Field: Local vulnerability feed JSON
-
-Linked file:
-
-- `.safedeps/vuln-feed.json`
-
-What to do:
-
-- Paste or edit valid vulnerability JSON.
-
-### Field: Local metadata cache JSON
-
-Linked file:
-
-- `.safedeps/metadata-cache.json`
-
-What to do:
-
-- Paste or edit valid metadata JSON.
-
-### Button: Save Intelligence Files
-
-What happens:
-
-- UI validates both JSON blocks.
-- If valid, files are saved.
-- If invalid, you get an error.
-
-### Button: Create Starter Templates
-
-What happens:
-
-- UI creates starter JSON templates when files are missing.
-- Good for first-time setup.
-
-## 9. How To Read Results
-
-### PASS / FAIL
-
-- `PASS`: no blocking findings at your `Fail on` threshold.
-- `FAIL`: one or more blocking findings at that threshold.
-
-### Pip install guard panel
-
-- Shows whether blocking `pip` findings exist at the selected threshold.
-
-### Findings table
-
-Each row shows:
-
-- Severity
 - Manager
-- Rule
 - Package
-- File
-- Message
+- Version
+- Worst Severity
+- Status
+- Rules
+- Quick Action
 
-Tip:
+### Quick Action: `Approve (+30 days)`
 
-- Review `CRITICAL` and `HIGH` findings first.
+- Prefills approval fields for that dependency.
+- Auto-fills `Expires` with +30 days if empty.
+- You still confirm by clicking `Add/Update Approval` in the approval form.
 
-## 10. Recommended Quick Flow
+### Status messages near dependency list
 
-1. Click `Setup Project Guard`.
-2. Set `Project path` to `.`.
-3. Keep `Fail on` as `HIGH`.
-4. Click `Run Scan`.
-5. If findings appear:
-   - use `Explain Rule` to understand them;
-   - if needed, use `Use For Approval` + `Add/Update Approval` with an expiration date.
-6. Run `Run Scan` again to confirm the final result.
+You now see, in the same section:
 
-## 11. Common Problems
+- latest action result (`status message`)
+- `Pip install guard` summary
 
-### You see `{ "ok": false, "detail": "not_found" }`
+This was moved here to avoid confusion with advanced findings.
 
-Usually means you are not hitting the SafeDeps root page or another service is on that port.
+## Section 3: Manage Dependencies (Guided)
 
-- Open `http://127.0.0.1:8765/` (with trailing slash).
-- If needed, switch port (`--port 8877`).
+You can now manage dependencies directly in UI without manual shell commands.
+
+Fields:
+
+- `Manager`: `pip` or `npm`
+- `Action`: `Install`, `Update`, `Uninstall`
+- `Package`: dependency name
+- `Version`: required for manual install/update
+- `Mode`:
+  - `Manual (exact version)` -> you must provide exact version like `0.4.6`
+  - `Auto (safe latest via manager)` -> UI resolves latest version and pins it
+
+Safety behavior:
+
+- Before install/update/uninstall, UI runs a pre-check scan at `CRITICAL`.
+- After action, UI runs a post-check scan at `CRITICAL`.
+- If critical blockers exist, action is blocked (or flagged after action).
+- If trust signals are uncertain (for example very new package or missing local metadata), UI requires explicit user approval.
+
+Examples:
+
+- You run `Safe Update` on a package released yesterday:
+  - UI warns that it is very new or not fully trusted yet
+  - you can confirm from the Safe Update approval overlay (`Confirm update` / `Cancel`)
+- You install a package with exact version but no local metadata cache:
+  - UI may ask for explicit approval before proceeding
+
+## Section 4: Explain Scan Warnings/Errors (Advanced)
+
+### Explain rule
+
+- Enter a rule code, for example `FLOATING_VERSION`.
+- Click `Explain Rule` to see a plain explanation.
+
+## Section 5: Baseline And Exceptions (Advanced)
+
+### Report path
+
+- Usually: `security-artifacts/safedeps-report.json`.
+
+### Baseline output path
+
+- Usually: `.safedeps/vuln-baseline.json`.
+
+### Create Baseline
+
+- Generates suppression entries from the report.
+
+### Approval Form (inside Section 5)
+
+Use this when you want a controlled exception.
+
+Fields:
+
+- `Baseline file`: usually `.safedeps/vuln-baseline.json`
+- `Manager`: `npm`, `pip`, `nuget`, `git`
+- `Rule`: e.g. `FLOATING_VERSION`
+- `Package` (optional): e.g. `lodash`
+- `File` (optional): e.g. `package.json`
+- `Expires (YYYY-MM-DD)`: required, e.g. `2026-12-31`
+
+### Add/Update Approval
+
+- Saves or updates the approval entry in baseline JSON.
+
+## Section 6: Policy Quick Editor (Advanced)
+
+This section updates policy safely from UI (no manual JSON editing for common tasks).
+
+### Add Registry To Allowlist
+
+Fields:
+
+- `Policy file (optional)`
+- `Manager` (example: `npm`)
+- `Registry URL to trust` (example: `https://registry.npmjs.org/`)
+
+Button:
+
+- `Add Registry To Allowlist`
+
+Result:
+
+- URL is added to `allowed_registries.<manager>` in policy file.
+
+### Package denylist actions
+
+Fields:
+
+- `Policy action`: `Add deny package` or `Remove deny package`
+- `Package name`
+- `Policy file (optional)`
+
+Button:
+
+- `Apply Package Policy Action`
+
+Result:
+
+- Package is added/removed from `deny_packages`.
+
+## Section 7: Intelligence Settings (Advanced)
+
+You can still edit advanced JSON here.
+
+- `Local vulnerability feed JSON` -> `.safedeps/vuln-feed.json`
+- `Local metadata cache JSON` -> `.safedeps/metadata-cache.json`
+
+Buttons:
+
+- `Save Intelligence Files`: validate and save
+- `Create Starter Templates`: create default JSON templates
+
+## Advanced Findings (collapsible)
+
+This panel is for advanced workflows and manual exception preparation.
+
+Each row shows severity, manager, rule, package, file, and message.
+
+Action button:
+
+- `Use For Approval` fills approval form from that finding.
+
+## Section Collapse Behavior
+
+- Sections `1`, `2`, and `3` are primary and always visible.
+- Advanced sections (`4`, `5`, `6`, `7`) are collapsible and start closed by default.
+- Advanced findings table is also collapsible.
+
+## Common Issues
+
+### `{ "ok": false, "detail": "not_found" }`
+
+- Open exact root URL: `http://127.0.0.1:8877/`.
+- If needed, switch to another port.
 
 ### Blank page with browser console extension errors
 
-Often caused by browser extensions, not SafeDeps.
-
-- Try private/incognito mode.
-- Or try a different browser.
+- Usually browser extension noise.
+- Try incognito/private mode.

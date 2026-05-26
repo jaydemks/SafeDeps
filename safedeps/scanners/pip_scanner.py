@@ -6,7 +6,7 @@ import tomllib
 from pathlib import Path
 
 from safedeps.models import Finding
-from safedeps.scanners.base import Scanner, severity_for_exception
+from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
 from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
 from safedeps.scanners.typosquat import typosquat_finding
 
@@ -22,7 +22,9 @@ class PipScanner(Scanner):
         has_python_manifest = False
         signals = MetadataSignals.load(root)
 
-        for req in root.rglob("requirements*.txt"):
+        for req in iter_files(root, "requirements*.txt"):
+            if path_is_excluded(root, req, policy):
+                continue
             if any(part.startswith(".") and part not in (".safedeps",) for part in req.relative_to(root).parts):
                 continue
             has_python_manifest = True
@@ -59,7 +61,9 @@ class PipScanner(Scanner):
                 if raw.startswith(("git+", "http://")):
                     findings.append(Finding("HIGH", "pip", "DIRECT_URL", f"Direct URL dependency requires explicit review: {raw}", file_ref, name, fix="Prefer registry package, commit SHA, and hash verification."))
 
-        for pyproject in root.rglob("pyproject.toml"):
+        for pyproject in iter_files(root, "pyproject.toml"):
+            if path_is_excluded(root, pyproject, policy):
+                continue
             if any(part.startswith(".") and part not in (".safedeps",) for part in pyproject.relative_to(root).parts):
                 continue
             has_python_manifest = True

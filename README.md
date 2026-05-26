@@ -16,14 +16,14 @@ It works with Python, npm, NuGet, and Git dependency definitions.
 Option A - clone with Git:
 
 ```bash
-git clone <YOUR_REPO_URL>
-cd safedeps-0.1.0
+git clone https://github.com/jaydemks/SafeDeps.git
+cd SafeDeps
 ```
 
 Option B - download ZIP from GitHub and extract it:
 
 ```bash
-cd /path/to/extracted/safedeps-0.1.0
+cd /path/to/extracted/SafeDeps
 ```
 
 2. Create and activate a virtual environment:
@@ -52,7 +52,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 3. Install SafeDeps from the local repository folder:
 
 ```bash
-pip install .
+python -m pip install -e .[dev]
 ```
 
 4. In your project folder, run one-time setup:
@@ -62,35 +62,28 @@ safedeps setup .
 source .safedeps/activate.sh
 ```
 
-Windows (PowerShell) setup command:
+Windows (PowerShell) setup + activation:
 
 ```powershell
-safedeps setup .
+python -m safedeps.cli setup .
+. .\.safedeps\activate.ps1
 ```
 
-5. Open the UI:
+5. Open the UI (recommended command, works even if shell entrypoint is missing):
 
 ```bash
-safedeps ui . --open-browser
-```
-
-Default UI URL: `http://127.0.0.1:8765/`
-
-If port `8765` is already in use, run:
-
-```bash
-safedeps ui . --host 127.0.0.1 --port 8877
+python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
 ```
 
 Then open `http://127.0.0.1:8877/`.
 
-6. Run scan from UI or CLI:
+6. Re-scan from UI or CLI:
 
 ```bash
 safedeps scan . --fail-on HIGH
 ```
 
-After `source .safedeps/activate.sh` (macOS/Linux), `pip install ...` in that project shell is automatically guarded by SafeDeps.
+After activation, runtime dependency operations are guarded in the shell session.
 
 ## What It Is (Simple)
 
@@ -107,6 +100,16 @@ It helps you block risky dependency changes early, for example:
 In short: it is a backend safety gate for dependency workflows in local dev and CI.
 
 UI full guide: `docs/UI_DOCUMENTATION.md`
+
+## Test Status (Current)
+
+- Tested and validated now:
+  - Python CLI flow
+  - `pip` and `python -m pip` runtime guard behavior
+  - UI guard toggles and dynamic updates
+- Still in active validation:
+  - npm runtime guard end-to-end
+  - NuGet/.NET runtime flows end-to-end
 
 ## Current State
 
@@ -154,6 +157,7 @@ UI full guide: `docs/UI_DOCUMENTATION.md`
   - floating/unpinned versions
   - untrusted registries/indexes
   - expired exceptions
+  - runtime strict checks for `pip`, `python -m pip`, and `npm` guarded wrappers
 - CI-friendly exit codes
 
 ## Install
@@ -205,6 +209,8 @@ From npm registry (after publish):
 npm install -g safedeps
 ```
 
+Note: npm runtime flow is implemented, but full cross-environment validation is still in progress.
+
 ### .NET
 
 From this repository (after pack/install):
@@ -225,6 +231,8 @@ From NuGet (after publish):
 dotnet tool install -g SafeDeps.Tool
 ```
 
+Note: NuGet/.NET runtime flow is implemented, but full cross-environment validation is still in progress.
+
 ## Quickstart
 
 ```bash
@@ -242,7 +250,14 @@ source .safedeps/activate.sh
 Windows (PowerShell):
 
 ```powershell
-safedeps setup .
+python -m safedeps.cli setup .
+. .\.safedeps\activate.ps1
+```
+
+Quick help command (terminal/cmd/powershell):
+
+```bash
+safedeps help
 ```
 
 Fail CI on high/critical findings:
@@ -314,25 +329,41 @@ safedeps approve . --manager npm --rule FLOATING_VERSION --package lodash --file
 Run the local visual UI:
 
 ```bash
-safedeps ui . --open-browser
+python -m safedeps.cli ui . --host 127.0.0.1 --port 8877 --open-browser
 ```
 
 The UI is fully in English and includes visual flows for:
 
-- scan execution
+- initial auto-scan on UI open + `Re-Scan`
+- dependency inventory table with quick approval action
+- direct per-row `Uninstall` and `Safe Update` actions
 - rule explanation (`explain`)
 - baseline generation (`baseline`)
 - expiring approvals (`approve --expires`)
 - one-click finding pickup ("Use For Approval") to prefill approval fields
+- policy quick editor for allowlist registries and deny packages
 - pip install guard panel showing blocking pip findings and reasons
 - intelligence editor for `.safedeps/vuln-feed.json` and `.safedeps/metadata-cache.json`
 - one-click starter template generation for local "safe" intelligence files
+- light/dark theme toggle persisted in browser
+- dynamic partial refresh for scan/dependency actions (reduced full-page reload behavior)
 
 UI options:
 
 - `--host` (default `127.0.0.1`)
 - `--port` (default `8765`)
 - `--fail-on` (default `HIGH`)
+
+Protection scope behavior:
+
+- `Project Only`: guard blocks runtime dependency changes only when working inside this project path.
+- `Global`: guard blocks runtime dependency changes both inside and outside this project path.
+- UI toggles are available under guard controls:
+  - `Scope: Project Only`
+  - `Scope: Global`
+- Default scope:
+  - if SafeDeps runs inside a virtual environment: `Project Only`
+  - if SafeDeps runs system-wide: `Global`
 
 ## Minimal Policy Example
 
@@ -418,7 +449,7 @@ Use trusted publishing/OIDC whenever available.
 Run local preflight checks before triggering a release:
 
 ```bash
-python scripts/release/preflight.py --expected-version 0.2.4
+python scripts/release/preflight.py --expected-version 0.2.5
 ```
 
 Release workflow template:

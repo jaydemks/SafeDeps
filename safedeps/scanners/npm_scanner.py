@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from safedeps.models import Finding
-from safedeps.scanners.base import Scanner, severity_for_exception
+from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
 from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
 from safedeps.scanners.typosquat import typosquat_finding
 
@@ -26,7 +26,9 @@ class NpmScanner(Scanner):
         package_files: list[Path] = []
         signals = MetadataSignals.load(root)
 
-        for pkgfile in root.rglob("package.json"):
+        for pkgfile in iter_files(root, "package.json"):
+            if path_is_excluded(root, pkgfile, policy):
+                continue
             if "node_modules" in pkgfile.parts:
                 continue
             package_files.append(pkgfile)
@@ -84,17 +86,23 @@ class NpmScanner(Scanner):
 
     def _scan_discovered_lockfiles(self, root: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
         seen: set[Path] = set()
-        for lock in root.rglob("package-lock.json"):
+        for lock in iter_files(root, "package-lock.json"):
+            if path_is_excluded(root, lock, policy):
+                continue
             if lock in seen:
                 continue
             seen.add(lock)
             self._scan_package_lock(lock, root, policy, findings, components, signals)
-        for lock in root.rglob("pnpm-lock.yaml"):
+        for lock in iter_files(root, "pnpm-lock.yaml"):
+            if path_is_excluded(root, lock, policy):
+                continue
             if lock in seen:
                 continue
             seen.add(lock)
             self._scan_pnpm_lock(lock, root, policy, findings, components, signals)
-        for lock in root.rglob("yarn.lock"):
+        for lock in iter_files(root, "yarn.lock"):
+            if path_is_excluded(root, lock, policy):
+                continue
             if lock in seen:
                 continue
             seen.add(lock)

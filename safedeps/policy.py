@@ -25,6 +25,10 @@ DEFAULT_POLICY = {
   "max_maintainer_changes_180d": 1,
   "enable_vulnerability_baseline": True,
   "vulnerability_baseline_file": ".safedeps/vuln-baseline.json"
+  ,
+  "exclude_paths": [
+    "examples/"
+  ]
 }
 
 @dataclass
