@@ -1,4 +1,4 @@
-# SafeDeps 0.2.5 - Update Notes (2026-05-26)
+# SafeDeps 0.2.6 - Update Notes (2026-05-26)
 
 ## Summary
 
