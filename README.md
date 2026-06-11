@@ -1,6 +1,6 @@
 # SafeDeps
 
-![SafeDeps Banner](docs/images/safedeps_banner.png)
+![SafeDeps Banner](docs/images/safedeps_banner_2026.png)
 
 SafeDeps is a local dependency firewall.
 

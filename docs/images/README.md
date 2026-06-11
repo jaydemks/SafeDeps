@@ -15,7 +15,7 @@ reports, SBOMs, SARIF files, and other generated security outputs.
 
 Suggested naming:
 
-- `safedeps_banner.png`
+- `safedeps_banner_2026.png`
 - `safedeps_icon.png`
 - `ui_scan_results.png`
 - `docs_policy_editor.png`
