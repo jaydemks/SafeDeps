@@ -2,426 +2,178 @@
 
 ![SafeDeps Banner](docs/images/safedeps_banner.png)
 
-SafeDeps is a dependency safety gate.
+SafeDeps is a local dependency firewall.
 
-It checks your project dependencies before install/update and can block risky changes (for example vulnerable, untrusted, or floating versions).
+It checks dependency changes before they are installed, committed, or accepted in CI. The goal is simple: make risky dependency changes harder to introduce by accident.
 
-It works with Python, npm, NuGet, and Git dependency definitions.
+This is useful when developers, scripts, or AI coding agents can add packages to a project.
 
-You can use SafeDeps in two ways:
+SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
 
-- Terminal/CLI mode (`safedeps scan`, `safedeps setup`, `safedeps help`, etc.)
-- Web UI mode (recommended for guided usage)
+## Quick example
 
-Open the UI with:
-
-```bash
-safedeps ui --open-browser
-```
-
-What this command does:
-
-- creates and uses a dedicated SafeDeps workspace automatically (`~/.safedeps/workspace`)
-- keeps UI-generated files in that workspace by default (no random file scattering)
-- auto-selects an available local port starting from `5200` if the requested one is blocked
-- opens your browser directly on the local UI
-
-Optional:
+With the guard active, this is blocked:
 
 ```bash
-safedeps ui <your-project-path> --open-browser
+pip install requests
 ```
 
-Windows desktop launcher (creates a `.bat` on Desktop):
-
-```powershell
-safedeps ui-shortcut
+```text
+Blocked: unpinned runtime install is not allowed.
+Use exact versions (example: package==1.2.3).
 ```
 
-Quick desktop shortcut flow (Windows):
+This can pass, if the project policy allows it:
 
-1. Open PowerShell.
-2. Run `safedeps ui-shortcut`.
-3. Verify `SafeDeps UI.bat` exists on your Desktop.
-4. If it is not created, run `safedeps help` and open an issue on GitHub with command output.
+```bash
+pip install requests==2.32.3
+```
 
-Install from PyPI (recommended for standard usage):
+Before the install is allowed, SafeDeps scans the project and fails the operation if blocking findings are found.
+
+## Current status
+
+SafeDeps is strongest today for Python and pip workflows.
+
+| Area | Status |
+| --- | --- |
+| Python project scanning | Supported |
+| `pip` runtime guard | Tested |
+| `python -m pip` runtime guard | Tested |
+| Local web UI | Tested for guard toggles and scan flows |
+| npm scanning | Supported |
+| npm runtime guard | Implemented, still being validated across environments |
+| NuGet/.NET scanning | Supported |
+| NuGet/.NET runtime flows | Implemented, still being validated across environments |
+| Git submodule checks | Supported |
+
+PyPI publishing is available:
 
 ```bash
 pip install safedeps
 ```
 
-> Status note (May 2026): PyPI publishing is now available.  
-> npm and NuGet publishing are still being finalized.
+The npm wrapper and .NET tool wrapper exist in this repository. npm and NuGet publishing are still being finalized.
 
-## Start In 60 Seconds
+## Install
 
-1. Get the repository (choose one option):
+For normal use:
 
-Option A - clone with Git:
+```bash
+python -m pip install safedeps
+```
+
+For local development from this repository:
 
 ```bash
 git clone https://github.com/jaydemks/SafeDeps.git
 cd SafeDeps
-```
-
-Option B - download ZIP from GitHub and extract it:
-
-```bash
-cd /path/to/extracted/SafeDeps
-```
-
-2. Create and activate a virtual environment:
-
-macOS/Linux:
-
-```bash
-python3 -m venv .venv-test
-source .venv-test/bin/activate
-```
-
-Windows (PowerShell):
-
-```powershell
-py -m venv .venv-test
-.\.venv-test\Scripts\Activate.ps1
-```
-
-If script execution is blocked in PowerShell:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv-test\Scripts\Activate.ps1
-```
-
-3. Install SafeDeps from the local repository folder:
-
-```bash
 python -m pip install -e .[dev]
 ```
 
-4. In your project folder, run one-time setup:
+## Set up a project
+
+Run setup once inside the project you want to protect:
 
 ```bash
 safedeps setup .
+```
+
+Activate the guard in the current shell:
+
+```bash
 source .safedeps/activate.sh
 ```
 
-Windows (PowerShell) setup + activation:
+PowerShell:
 
 ```powershell
 python -m safedeps.cli setup .
 . .\.safedeps\activate.ps1
 ```
 
-5. Open the UI (recommended command, works even if shell entrypoint is missing):
+After activation, guarded dependency operations are checked before they run.
+
+## Scan
+
+Run a local scan:
 
 ```bash
-safedeps ui --open-browser
-```
-
-Then open the URL printed in terminal (default start port is `5200`).
-
-Important reinstall note (Auto Guard state):
-
-- After reinstall/upgrade, run `safedeps setup .` once in the project you want to protect.
-- SafeDeps now re-syncs the real guard state (profile/PATH hooks) with the UI toggle.
-- If you want to check commands again quickly, run `safedeps help`.
-
-6. Re-scan from UI or CLI:
-
-```bash
-safedeps scan . --fail-on HIGH
-```
-
-After activation, runtime dependency operations are guarded in the shell session.
-
-## What It Is (Simple)
-
-SafeDeps is a guardrail you run before installing or updating dependencies.
-
-It helps you block risky dependency changes early, for example:
-
-- unpinned/floating versions
-- untrusted registries/sources
-- known vulnerable packages (from configured local intelligence/feed)
-- missing lockfiles
-- suspicious package patterns
-
-In short: it is a backend safety gate for dependency workflows in local dev and CI.
-
-UI full guide: `docs/UI_DOCUMENTATION.md`
-
-## Test Status (Current)
-
-- Tested and validated now:
-  - Python CLI flow
-  - `pip` and `python -m pip` runtime guard behavior
-  - UI guard toggles and dynamic updates
-- Still in active validation:
-  - npm runtime guard end-to-end
-  - NuGet/.NET runtime flows end-to-end
-
-## Current State
-
-- Core engine: Python CLI/library (`safedeps` package)
-- npm distribution: wrapper package present in `packages/npm-wrapper`
-- .NET global tool wrapper: implemented in `packages/dotnet-tool`
-- Publish status:
-  - PyPI: published (installable with `pip install safedeps`)
-  - npm: not published yet
-  - NuGet: not published yet
-  - Target: finalize npm/NuGet publishing after release validation checks pass
-- Security outputs:
-  - `security-artifacts/safedeps-report.json`
-  - `security-artifacts/safedeps-sbom.json`
-
-## Versioning Policy
-
-- Single public version for all official distributions.
-- Python core package version in `pyproject.toml` must match:
-  - `safedeps/__init__.py` (`__version__`)
-  - `packages/npm-wrapper/package.json` (`version`)
-- Release tags must follow `vX.Y.Z`.
-- No package publish if versions are inconsistent.
-- CI enforces this with `python scripts/check_versions.py`.
-
-## Features
-
-- Central policy file: `.safedeps/policy.json`
-- Python scanning:
-  - `requirements*.txt`
-- npm scanning:
-  - `package.json`
-  - `.npmrc`
-  - lockfile presence checks
-  - install lifecycle scripts checks
-  - `pnpm-lock.yaml` deep parsing (PyYAML-backed)
-- .NET scanning:
-  - `.csproj`
-  - `NuGet.Config`
-  - lockfile presence checks
-- Git dependency checks:
-  - `.gitmodules`
-- Rule enforcement:
-  - denylist packages
-  - floating/unpinned versions
-  - untrusted registries/indexes
-  - expired exceptions
-  - runtime strict checks for `pip`, `python -m pip`, and `npm` guarded wrappers
-- CI-friendly exit codes
-
-## Install
-
-### Python (local development)
-
-```bash
-pip install .
-```
-
-Install with development tooling (tests):
-
-```bash
-pip install .[dev]
-```
-
-Or bootstrap a local virtual environment automatically:
-
-```bash
-./scripts/bootstrap_dev.sh
-```
-
-Windows manual setup:
-
-```powershell
-py -m venv .venv-test
-.\.venv-test\Scripts\Activate.ps1
-pip install -e .[dev]
-```
-
-### Python (from PyPI, after publish)
-
-```bash
-pip install safedeps
-```
-
-### npm (from wrapper package)
-
-From this repository:
-
-```bash
-cd packages/npm-wrapper
-npm install -g .
-```
-
-From npm registry (after publish):
-
-```bash
-npm install -g @jaydemks/safedeps
-```
-
-Note: npm runtime flow is implemented, but full cross-environment validation is still in progress.
-
-### .NET
-
-From this repository (after pack/install):
-
-```bash
-dotnet tool install --global --add-source ./artifacts/dotnet SafeDeps.Tool
-```
-
-Command:
-
-```bash
-safedeps-dotnet scan .
-```
-
-From NuGet (after publish):
-
-```bash
-dotnet tool install -g SafeDeps.Tool
-```
-
-Note: NuGet/.NET runtime flow is implemented, but full cross-environment validation is still in progress.
-
-## Quickstart
-
-```bash
-safedeps init
 safedeps scan .
 ```
 
-One-time project auto-configuration (guard `pip install` automatically in this project shell):
-
-```bash
-safedeps setup .
-source .safedeps/activate.sh
-```
-
-Windows (PowerShell):
-
-```powershell
-python -m safedeps.cli setup .
-. .\.safedeps\activate.ps1
-```
-
-Quick help command (terminal/cmd/powershell):
-
-```bash
-safedeps help
-```
-
-Uninstall note (recommended):
-
-- Before running `pip uninstall safedeps`, set UI toggle `Auto ON/OFF` to `OFF`.
-- This helps avoid leftover shell/profile hooks that could keep blocking unmonitored installs after uninstall.
-
-Fail CI on high/critical findings:
+Fail on high or critical findings:
 
 ```bash
 safedeps scan . --fail-on HIGH
 ```
 
-Optional online npm audit:
+Write scan artifacts to a folder:
+
+```bash
+safedeps scan . --out security-artifacts
+```
+
+Optional npm audit check:
 
 ```bash
 safedeps scan . --online-audit
 ```
 
-Optional SARIF export:
+## UI
 
-```bash
-safedeps scan . --sarif security-artifacts/safedeps.sarif
-```
-
-Optional CycloneDX export:
-
-```bash
-safedeps scan . --cyclonedx security-artifacts/safedeps.cdx.json
-```
-
-Optional SPDX export:
-
-```bash
-safedeps scan . --spdx security-artifacts/safedeps.spdx.json
-```
-
-Optional HTML export:
-
-```bash
-safedeps scan . --html security-artifacts/safedeps-report.html
-```
-
-Exporter notes:
-
-- SARIF includes rule catalog and severity mapping.
-- CycloneDX/SPDX exporters deduplicate repeated components.
-- SPDX and CycloneDX include purl metadata when manager/version are available.
-
-Validate local setup and metadata cache health:
-
-```bash
-safedeps doctor .
-```
-
-Explain a specific finding rule:
-
-```bash
-safedeps explain FLOATING_VERSION
-```
-
-Create vulnerability baseline from the latest report:
-
-```bash
-safedeps baseline . --report security-artifacts/safedeps-report.json --output .safedeps/vuln-baseline.json
-```
-
-Add/update an expiring suppression entry:
-
-```bash
-safedeps approve . --manager npm --rule FLOATING_VERSION --package lodash --file package.json --expires 2026-12-31
-```
-
-Run the local visual UI:
+SafeDeps also has a local web UI:
 
 ```bash
 safedeps ui --open-browser
 ```
 
-The UI is fully in English and includes visual flows for:
+The UI runs locally on `127.0.0.1` and opens a browser window. If the requested port is busy, SafeDeps tries nearby ports.
 
-- initial auto-scan on UI open + `Re-Scan`
-- dependency inventory table with quick approval action
-- direct per-row `Uninstall` and `Safe Update` actions
-- rule explanation (`explain`)
-- baseline generation (`baseline`)
-- expiring approvals (`approve --expires`)
-- one-click finding pickup ("Use For Approval") to prefill approval fields
-- policy quick editor for allowlist registries and deny packages
-- pip install guard panel showing blocking pip findings and reasons
-- intelligence editor for `.safedeps/vuln-feed.json` and `.safedeps/metadata-cache.json`
-- one-click starter template generation for local "safe" intelligence files
-- light/dark theme toggle persisted in browser
-- dynamic partial refresh for scan/dependency actions (reduced full-page reload behavior)
+The UI is useful for scans, dependency inventory, guard controls, approvals, policy edits, baselines, and local intelligence files.
 
-UI options:
+On Windows, you can create a desktop launcher:
 
-- `--host` (default `127.0.0.1`)
-- `--port` (default `8765`)
-- `--fail-on` (default `HIGH`)
+```powershell
+safedeps ui-shortcut
+```
 
-Protection scope behavior:
+## What gets checked
 
-- `Project Only`: guard blocks runtime dependency changes only when working inside this project path.
-- `Global`: guard blocks runtime dependency changes both inside and outside this project path.
-- UI toggles are available under guard controls:
-  - `Scope: Project Only`
-  - `Scope: Global`
-- Default scope:
-  - if SafeDeps runs inside a virtual environment: `Project Only`
-  - if SafeDeps runs system-wide: `Global`
+SafeDeps can flag:
 
-## Minimal Policy Example
+- unpinned Python dependencies
+- floating npm versions such as `^`, `~`, `*`, or `latest`
+- floating or range-based NuGet versions
+- untrusted registries or package sources
+- denied packages
+- missing lockfiles
+- direct URL dependencies that need review
+- npm install lifecycle scripts
+- suspicious package name patterns
+- insecure Git submodule URLs
+- expired exceptions
+- local vulnerability feed matches
+- optional metadata risk signals, when a metadata cache is provided
+
+## Supported files
+
+| Ecosystem | Files |
+| --- | --- |
+| Python / pip | `requirements*.txt`, `pyproject.toml`, `poetry.lock`, `uv.lock`, `Pipfile.lock` |
+| npm | `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `.npmrc` |
+| NuGet / .NET | `*.csproj`, `Directory.Packages.props`, `packages.config`, `packages.lock.json`, `NuGet.Config`, `nuget.config` |
+| Git | `.gitmodules` |
+
+## Policy
+
+SafeDeps creates a default policy at:
+
+```text
+.safedeps/policy.json
+```
+
+Minimal example:
 
 ```json
 {
@@ -446,123 +198,180 @@ Protection scope behavior:
 }
 ```
 
-Vulnerability baseline support:
+Keep policies small at first. Start with pinned versions, trusted registries, deny packages, and lockfiles.
 
-- Default file: `.safedeps/vuln-baseline.json`
-- Matching findings can be suppressed via `suppress` entries (`manager`, `rule`, `package`, `file`).
-- Suppression entries may include optional `expires` (`YYYY-MM-DD`); expired entries are ignored.
-
-Local vulnerability feed support:
-
-- Optional file: `.safedeps/vuln-feed.json`
-- Supported fields per entry: `manager`, `package`, `id`, `severity`, `message`
-- Optional OSV-style entries via `vulnerabilities_osv` are also supported in `.safedeps/vuln-feed.json`.
-- Severity is normalized to SafeDeps scale (`CRITICAL/HIGH/MEDIUM/LOW/INFO`).
-- You can create/edit/validate this file directly from the UI ("Intelligence Settings"), no manual file editing required.
-
-Local metadata cache support:
-
-- Optional file: `.safedeps/metadata-cache.json`
-- Used by age/churn/maintainer risk signals.
-- You can create/edit/validate this file directly from the UI ("Intelligence Settings").
-
-## Verification Workflow
-
-Run these checks before release:
-
-1. `safedeps scan examples/bad-project` must fail (`exit code 2`).
-2. `safedeps scan examples/safe-project` should pass or produce only accepted non-blocking findings.
-3. `python -m pytest` must pass.
-4. CI must fail on an intentionally unsafe fixture branch.
-
-## Publishing
-
-### Python / PyPI
+## Explain a finding
 
 ```bash
-python -m build
-python -m twine upload dist/*
+safedeps explain FLOATING_VERSION
 ```
 
-### npm
+This prints what the rule means and what SafeDeps expects you to change.
+
+## Baselines and approvals
+
+Create a baseline from a report:
 
 ```bash
-cd packages/npm-wrapper
-npm publish --access public
+safedeps baseline . \
+  --report security-artifacts/safedeps-report.json \
+  --output .safedeps/vuln-baseline.json
 ```
 
-### .NET / NuGet (planned)
+Add an expiring approval:
 
 ```bash
-dotnet pack packages/dotnet-tool/SafeDeps.Tool.csproj -c Release -o artifacts/dotnet
-dotnet nuget push artifacts/dotnet/*.nupkg --source https://api.nuget.org/v3/index.json --api-key YOUR_KEY
+safedeps approve . \
+  --manager npm \
+  --rule FLOATING_VERSION \
+  --package lodash \
+  --file package.json \
+  --expires 2026-12-31
 ```
 
-Use trusted publishing/OIDC whenever available.
+Approvals should expire. Permanent suppressions are easy to forget.
 
-## Release Automation (Template)
+## Local intelligence
 
-Run local preflight checks before triggering a release:
+SafeDeps can use local files for extra checks:
+
+```text
+.safedeps/vuln-feed.json
+.safedeps/metadata-cache.json
+```
+
+The vulnerability feed can contain local package advisories. The metadata cache can be used for age, churn, and maintainer-change signals.
+
+These files can be edited directly or from the UI.
+
+## Reports
+
+JSON report:
 
 ```bash
-python scripts/release/preflight.py --expected-version 0.2.9
+safedeps scan . --out security-artifacts
 ```
 
-Release workflow template:
-
-- `.github/workflows/release-template.yml`
-- includes:
-  - preflight checks
-  - Python distribution build artifact
-  - npm wrapper tarball artifact
-  - .NET tool `.nupkg` artifact
-  - release checksum manifest (`release-artifacts/release-manifest.json`)
-  - optional publish gates (`publish=true`) for PyPI/npm/NuGet
-  - tag-triggered release flow on `v*` tags
-  - GitHub release publication with attached artifacts
-  - build provenance attestation stage
-
-Detailed process guide:
-
-- `docs/release/RELEASE_PROCESS.md`
-
-Artifact validation helper:
+SARIF:
 
 ```bash
-python scripts/validate_artifacts.py security-artifacts
+safedeps scan . --sarif security-artifacts/safedeps.sarif
 ```
 
-## CI Templates
+CycloneDX:
 
-Ready-to-copy templates are available in `examples/ci/` for:
+```bash
+safedeps scan . --cyclonedx security-artifacts/safedeps.cdx.json
+```
 
-- GitHub Actions
-- GitLab CI
-- Azure Pipelines
+SPDX:
 
-See `examples/ci/README.md` for usage details.
+```bash
+safedeps scan . --spdx security-artifacts/safedeps.spdx.json
+```
 
-## Pre-commit Integration
+HTML:
 
-This repository includes a ready pre-commit hook config:
+```bash
+safedeps scan . --html security-artifacts/safedeps-report.html
+```
 
-- `.pre-commit-config.yaml`
+## CI
 
-Install and enable:
+Minimal GitHub Actions example:
+
+```yaml
+name: SafeDeps
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  safedeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install safedeps
+      - run: safedeps scan . --fail-on HIGH --out security-artifacts
+```
+
+More CI examples are in:
+
+```text
+examples/ci/
+```
+
+## Pre-commit
+
+The repository includes a pre-commit config:
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-The hook runs:
+The hook runs SafeDeps before commit.
+
+## Check your setup
 
 ```bash
-safedeps scan . --fail-on HIGH --out security-artifacts
+safedeps doctor .
 ```
 
-## Security Scope
+This checks the local setup and warns about missing optional files or environment problems.
+
+## Uninstall notes
+
+If Auto Guard was enabled from the UI, turn it off before uninstalling.
+
+You can also clean up guard hooks for the current project:
+
+```bash
+safedeps guard-cleanup .
+```
+
+Then uninstall:
+
+```bash
+python -m pip uninstall safedeps
+```
+
+## Development
+
+Run tests:
+
+```bash
+python -m pytest
+```
+
+Useful release checks:
+
+```bash
+python scripts/check_versions.py
+python scripts/release/preflight.py --expected-version 0.2.9
+```
+
+Version numbers should stay aligned across:
+
+- `pyproject.toml`
+- `safedeps/__init__.py`
+- `packages/npm-wrapper/package.json`
+
+Release tags should use:
+
+```text
+vX.Y.Z
+```
+
+## Security scope
 
 SafeDeps is a preventive gate, not a guarantee that every package is safe.
 
-It should be used with lockfiles, code review, SBOM analysis, vulnerability feeds, signed releases where supported, and CI policy enforcement.
+Use it together with lockfiles, code review, vulnerability feeds, SBOM analysis, signed releases where supported, and CI policy enforcement.
+
+SafeDeps is meant to add an early safety layer: before install, before commit, and before CI accepts a dependency change.

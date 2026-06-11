@@ -1,4 +1,5 @@
 .safedeps/
+security-artifacts/
 .tmp-security/
 **/.tmp-security/
 .venv/

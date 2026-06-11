@@ -538,8 +538,8 @@ def cmd_ui(args):
                 elif self.path == "/baseline":
                     report_rel = form.get("report", ["security-artifacts/safedeps-report.json"])[0] or "security-artifacts/safedeps-report.json"
                     output_rel = form.get("baseline_output", [".safedeps/vuln-baseline.json"])[0] or ".safedeps/vuln-baseline.json"
-                    count = write_baseline_file(scan_path, report_rel, output_rel)
-                    body = render_ui_page(scan_path, fail_on, notice=f"Baseline written: {scan_path / output_rel} ({count} entries)", ui_state=ui_state)
+                    count, output_path = write_baseline_file(scan_path, report_rel, output_rel)
+                    body = render_ui_page(scan_path, fail_on, notice=f"Baseline written: {output_path} ({count} entries)", ui_state=ui_state)
                 elif self.path == "/approve":
                     updated, msg = upsert_approval_entry(
                         scan_path,
@@ -2267,22 +2267,18 @@ def cmd_explain(args):
     print(text)
     return 0
 
-def cmd_baseline(args):
-    root = Path(args.path).resolve()
-    report_path = root / args.report
-    output_path = root / args.output
+def write_baseline_file(root: Path, report_rel: str, output_rel: str):
+    report_path = root / report_rel
+    output_path = root / output_rel
     if not report_path.exists():
-        print(f"Missing report file: {report_path}")
-        return 2
+        raise ValueError(f"Missing report file: {report_path}")
     try:
         report = json.loads(report_path.read_text(encoding="utf-8"))
     except Exception as e:
-        print(f"Invalid report JSON: {e}")
-        return 2
+        raise ValueError(f"Invalid report JSON: {e}") from e
     findings = report.get("findings", [])
     if not isinstance(findings, list):
-        print("Invalid report format: findings must be a list")
-        return 2
+        raise ValueError("Invalid report format: findings must be a list")
     suppress = []
     for f in findings:
         if not isinstance(f, dict):
@@ -2297,7 +2293,16 @@ def cmd_baseline(args):
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps({"suppress": suppress}, indent=2), encoding="utf-8")
-    print(f"Baseline written: {output_path} ({len(suppress)} entries)")
+    return len(suppress), output_path
+
+def cmd_baseline(args):
+    root = Path(args.path).resolve()
+    try:
+        count, output_path = write_baseline_file(root, args.report, args.output)
+    except Exception as e:
+        print(str(e))
+        return 2
+    print(f"Baseline written: {output_path} ({count} entries)")
     return 0
 
 def cmd_approve(args):
