@@ -13,7 +13,8 @@ safedeps ui .
 Behavior:
 
 - `safedeps ui .` opens the UI on the current project root.
-- `safedeps ui` opens the current directory when it looks like a project; otherwise it creates/uses `~/.safedeps/workspace`.
+- `safedeps ui` opens a dedicated SafeDeps workspace at `~/.safedeps/workspace`.
+- Use an explicit path (`safedeps ui .` or `safedeps ui C:\path\project`) when you want the UI to scan/protect a project.
 - Default start port is `5200` and SafeDeps auto-tries next local ports if one is blocked.
 - On Windows you can create a desktop launcher with `safedeps ui-shortcut`.
 

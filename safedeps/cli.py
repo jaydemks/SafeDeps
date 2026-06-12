@@ -607,12 +607,6 @@ def _resolve_ui_start_path(path_arg: str):
     if raw == ".":
         return Path.cwd().resolve()
     if not raw:
-        cwd = Path.cwd().resolve()
-        cwd = _normalize_project_path(cwd)
-        if _is_project_scoped_install():
-            return cwd
-        if _looks_like_project_root(cwd):
-            return cwd
         d = _default_ui_workspace()
         d.mkdir(parents=True, exist_ok=True)
         return d

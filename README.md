@@ -785,7 +785,7 @@ Useful release checks:
 
 ```bash
 python scripts/check_versions.py
-python scripts/release/preflight.py --expected-version 0.3.1
+python scripts/release/preflight.py --expected-version 0.3.2
 ```
 
 Prepare the next version and release note:

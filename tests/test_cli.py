@@ -750,10 +750,14 @@ def test_version_commands(capsys):
     assert __version__ in capsys.readouterr().out
 
 
-def test_ui_start_path_prefers_current_project(tmp_path, monkeypatch):
+def test_ui_start_path_uses_workspace_without_explicit_path(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
     monkeypatch.chdir(tmp_path)
     (tmp_path / "pyproject.toml").write_text("[project]\nname = \"demo\"\nversion = \"0.0.1\"\n", encoding="utf-8")
-    assert _resolve_ui_start_path("") == tmp_path.resolve()
+    assert _resolve_ui_start_path("") == (home / ".safedeps" / "workspace").resolve()
     assert _resolve_ui_start_path(".") == tmp_path.resolve()
 
 
@@ -770,12 +774,17 @@ def test_normalize_project_path_keeps_project_root(tmp_path):
 
 
 def test_normalize_project_path_moves_from_venv_to_parent(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
     (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\nversion='1.0.0'\n", encoding="utf-8")
     venv_dir = tmp_path / ".venv-test"
     venv_dir.mkdir()
     monkeypatch.chdir(venv_dir)
     assert _normalize_project_path(venv_dir) == tmp_path
-    assert _resolve_ui_start_path("") == tmp_path.resolve()
+    assert _resolve_ui_start_path("") == (home / ".safedeps" / "workspace").resolve()
+    assert _normalize_project_path(_resolve_ui_start_path(".")) == tmp_path.resolve()
 
 
 def test_ui_start_path_falls_back_to_workspace_outside_project(tmp_path, monkeypatch):
