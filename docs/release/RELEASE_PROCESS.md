@@ -6,6 +6,12 @@ This document defines the minimum release process for SafeDeps public distributi
 
 ## Preflight
 
+Prepare the next version and release note:
+
+```bash
+python scripts/release/bump_version.py patch --note "Short release change summary"
+```
+
 Run locally before release:
 
 ```bash
@@ -105,3 +111,5 @@ The following versions must match before release:
 ## Release Notes
 
 Update release notes for every meaningful change before publishing.
+
+Use `scripts/release/bump_version.py` for the first release-note scaffold, then replace TODO items with the concrete fixes, verification commands, and follow-up work.

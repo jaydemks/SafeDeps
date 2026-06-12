@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, json, os, sys, subprocess, threading, webbrowser
+import argparse, json, os, shlex, sys, subprocess, threading, webbrowser
 from pathlib import Path
 from datetime import datetime, timezone
 from urllib.parse import parse_qs
@@ -423,14 +423,200 @@ def _default_ui_workspace():
     home = Path.home()
     return (home / ".safedeps" / "workspace").resolve()
 
+def _is_project_scoped_install():
+    return getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+
+def _installation_scope_label():
+    return "project" if _is_project_scoped_install() else "system"
+
+
+class InstallMode:
+    def __init__(self, root: Path, label: str | None = None):
+        self.root = root
+        self.label = (label or _installation_scope_label()).strip().lower()
+        if self.label == "global":
+            self.label = "system"
+        if self.label not in ("project", "system"):
+            self.label = "project" if _is_project_scoped_install() else "system"
+
+    @property
+    def is_project_install(self) -> bool:
+        return self.label == "project"
+
+    @property
+    def is_system_install(self) -> bool:
+        return self.label == "system"
+
+    @property
+    def global_scope_available(self) -> bool:
+        return self.is_system_install
+
+    def project_runtime_python(self) -> str | None:
+        return _runtime_python_for_project_scope(self.root)
+
+    def system_runtime_python(self) -> str:
+        return _runtime_python_for_system_scope()
+
+    def runtime_python_for_action(self, action_scope: str | None = None) -> str:
+        scope = str(action_scope or "").strip().lower()
+        if self.is_project_install:
+            return self.project_runtime_python() or self.system_runtime_python()
+        if scope == "project":
+            return self.project_runtime_python() or self.system_runtime_python()
+        return self.system_runtime_python()
+
+    def action_scope(self, requested_scope: str | None, current_guard_scope: str = "project") -> str:
+        scope = str(requested_scope or "").strip().lower()
+        if scope not in ("project", "global", "system"):
+            scope = str(current_guard_scope or "project").strip().lower()
+        if self.is_project_install:
+            return "project"
+        return "system" if scope in ("global", "system") else "project"
+
+    def enforce_project_state(self, root: Path | None = None):
+        if not self.is_project_install:
+            return
+        target = root or self.root
+        state = _load_guard_state(target)
+        if str(state.get("protection_scope", "project")).lower() != "project":
+            state["protection_scope"] = "project"
+            state["project_root"] = str(target)
+            _write_guard_state(target, state)
+
+    def can_set_guard_action(self, guard_action: str) -> tuple[bool, str]:
+        if self.is_project_install and guard_action == "set_scope_global":
+            return False, "Global scope is not available for a SafeDeps virtual environment install."
+        return True, ""
+
+
+def _install_mode(root: Path, label: str | None = None) -> InstallMode:
+    return InstallMode(root, label)
+
+
+def _python_from_virtual_env(venv_root: Path | str):
+    base = Path(venv_root)
+    if not base.exists() or not base.is_dir():
+        return None
+    candidates = [
+        base / "Scripts" / "python.exe",
+        base / "Scripts" / "python",
+        base / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def _iter_project_runtime_candidates(root: Path):
+    def _is_subpath(candidate: Path, base: Path) -> bool:
+        try:
+            candidate.resolve().relative_to(base.resolve())
+            return True
+        except ValueError:
+            return False
+
+    for venv_name in (".venv-test", "venv", ".venv", "env", ".env", ".virtualenv"):
+        py = _python_from_virtual_env(root / venv_name)
+        if py:
+            yield Path(py)
+
+    active_venv = os.environ.get("VIRTUAL_ENV", "").strip()
+    if active_venv:
+        py = _python_from_virtual_env(active_venv)
+        if py:
+            py_path = Path(py)
+            project_root = root.resolve()
+            if _is_subpath(py_path, project_root):
+                yield py_path
+
+
+def _has_project_runtime_candidates(root: Path) -> bool:
+    return any(py is not None for py in _iter_project_runtime_candidates(root))
+
+
+def _project_runtime_python(root: Path) -> str | None:
+    return next((str(py.resolve()) for py in _iter_project_runtime_candidates(root) if py), None)
+
+
+def _runtime_python_for_project_scope(root: Path) -> str | None:
+    return _project_runtime_python(root)
+
+
+def _runtime_python_for_system_scope() -> str:
+    return str(Path(sys.executable).resolve())
+
+
+def _runtime_python_for_action(root: Path, *, action_scope: str | None = None) -> str:
+    return _install_mode(root).runtime_python_for_action(action_scope)
+
+
+def _detect_project_runtime_python(root: Path):
+    # If this process is already running inside a virtual environment, use it.
+    if _is_project_scoped_install():
+        return str(Path(sys.executable).resolve())
+
+    candidate = _project_runtime_python(root)
+    if candidate:
+        return candidate
+
+    # Fallback to current executable.
+    return str(Path(sys.executable).resolve())
+
+def _looks_like_project_root(path: Path):
+    project_markers = [
+        ".safedeps",
+        "pyproject.toml",
+        "requirements.txt",
+        "requirements.lock",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "Directory.Packages.props",
+        "packages.config",
+        ".git",
+    ]
+    if any((path / marker).exists() for marker in project_markers):
+        return True
+    return any(path.glob("*.csproj"))
+
+
+def _normalize_project_path(path: Path):
+    p = path.resolve()
+    if _looks_like_project_root(p):
+        return p
+
+    venv_like_names = {
+        ".venv",
+        ".venv-test",
+        "venv",
+        ".env",
+        "env",
+        ".virtualenv",
+    }
+
+    if p.name.lower() in venv_like_names:
+        parent = p.parent
+        if parent != p and _looks_like_project_root(parent):
+            return parent
+    return p
+
 def _resolve_ui_start_path(path_arg: str):
     raw = (path_arg or "").strip()
-    if not raw or raw == ".":
+    if raw == ".":
+        return Path.cwd().resolve()
+    if not raw:
+        cwd = Path.cwd().resolve()
+        cwd = _normalize_project_path(cwd)
+        if _is_project_scoped_install():
+            return cwd
+        if _looks_like_project_root(cwd):
+            return cwd
         d = _default_ui_workspace()
         d.mkdir(parents=True, exist_ok=True)
         return d
     p = Path(raw).expanduser().resolve()
-    p.mkdir(parents=True, exist_ok=True)
     return p
 
 def cmd_ui_shortcut(args):
@@ -459,13 +645,19 @@ def cmd_ui(args):
     start_path = _resolve_ui_start_path(args.path)
     default_fail_on = args.fail_on
     setup_note = ""
+    install_scope_arg = getattr(args, "install_scope", "auto")
+    install_mode = _install_mode(start_path, None if install_scope_arg == "auto" else install_scope_arg)
 
-    if "Not configured" in get_setup_status(start_path):
-        try:
-            cmd_setup(argparse.Namespace(path=str(start_path), fail_on=default_fail_on, force=False))
-            setup_note = "Auto-setup completed: guard wrappers created for this project."
-        except Exception as e:
-            setup_note = f"Auto-setup failed: {e}"
+    def render_page(path: Path, fail_on: str, **kwargs):
+        return render_ui_page(path, fail_on, install_scope=install_mode.label, **kwargs)
+
+    def _require_existing_project_dir(path: Path, purpose: str):
+        if not path.exists() or not path.is_dir():
+            raise ValueError(f"{purpose}: path must be an existing directory.")
+        return path
+
+    def enforce_project_scope_if_needed(path: Path):
+        _install_mode(path, install_mode.label).enforce_project_state(path)
 
     class UIHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -473,23 +665,11 @@ def cmd_ui(args):
                 self.send_error(404)
                 return
             try:
-                initial_result, initial_outdir = run_scan_pipeline(
-                    root=start_path,
-                    policy_arg=None,
-                    out="security-artifacts",
-                    fail_on=default_fail_on if default_fail_on in SEVERITY_ORDER else "HIGH",
-                    online_audit=False,
-                    sarif="",
-                    cyclonedx="",
-                    spdx="",
-                    html="",
-                )
-                notice = "Initial scan completed."
-                if setup_note:
-                    notice = f"{setup_note} {notice}"
-                body = render_ui_page(start_path, default_fail_on, result=initial_result, outdir=initial_outdir, notice=notice)
+                _require_existing_project_dir(start_path, "Project path")
+                enforce_project_scope_if_needed(start_path)
+                body = render_page(start_path, default_fail_on)
             except Exception as e:
-                body = render_ui_page(start_path, default_fail_on, error=str(e))
+                body = render_page(start_path, default_fail_on, error=str(e))
             self._send_html(body)
 
         def do_POST(self):
@@ -499,10 +679,27 @@ def cmd_ui(args):
             content_len = int(self.headers.get("Content-Length", "0"))
             payload = self.rfile.read(content_len).decode("utf-8")
             form = parse_qs(payload)
-            scan_path = Path((form.get("path", [str(start_path)])[0] or str(start_path))).resolve()
+            raw_scan_path = (form.get("path", [str(start_path)])[0] or str(start_path)).strip()
+            scan_path = _normalize_project_path(Path(raw_scan_path or str(start_path)).resolve())
+            _require_existing_project_dir(scan_path, "Project path")
             fail_on = (form.get("fail_on", [default_fail_on])[0] or default_fail_on).upper()
             ui_state = _ui_state_from_form(form, scan_path, fail_on)
+
+            def _refresh_project_setup_for_system_scope():
+                if not install_mode.is_system_install:
+                    return
+                cmd_setup(
+                    argparse.Namespace(
+                        path=str(scan_path),
+                        fail_on=fail_on if fail_on in SEVERITY_ORDER else default_fail_on,
+                        force=True,
+                        install_scope=install_mode.label,
+                        protection_scope=get_protection_scope(scan_path),
+                    )
+                )
+
             try:
+                enforce_project_scope_if_needed(scan_path)
                 if self.path == "/scan":
                     out = form.get("out", ["security-artifacts"])[0] or "security-artifacts"
                     online_audit = form.get("online_audit", ["off"])[0] == "on"
@@ -517,7 +714,7 @@ def cmd_ui(args):
                         spdx=form.get("spdx", [""])[0],
                         html=form.get("html", [""])[0],
                     )
-                    body = render_ui_page(scan_path, fail_on, result=result, outdir=outdir, notice="Scan completed.", ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, result=result, outdir=outdir, notice="Scan completed.", ui_state=ui_state)
                 elif self.path == "/explain":
                     rule = (form.get("rule", [""])[0] or "").strip().upper()
                     text = RULE_EXPLAINERS.get(rule)
@@ -534,12 +731,12 @@ def cmd_ui(args):
                         spdx="",
                         html="",
                     )
-                    body = render_ui_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=f"{rule}: {text}", ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=f"{rule}: {text}", ui_state=ui_state)
                 elif self.path == "/baseline":
                     report_rel = form.get("report", ["security-artifacts/safedeps-report.json"])[0] or "security-artifacts/safedeps-report.json"
                     output_rel = form.get("baseline_output", [".safedeps/vuln-baseline.json"])[0] or ".safedeps/vuln-baseline.json"
                     count, output_path = write_baseline_file(scan_path, report_rel, output_rel)
-                    body = render_ui_page(scan_path, fail_on, notice=f"Baseline written: {output_path} ({count} entries)", ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, notice=f"Baseline written: {output_path} ({count} entries)", ui_state=ui_state)
                 elif self.path == "/approve":
                     updated, msg = upsert_approval_entry(
                         scan_path,
@@ -551,15 +748,18 @@ def cmd_ui(args):
                         expires=(form.get("expires", [""])[0] or "").strip(),
                     )
                     action = "Updated" if updated else "Added"
-                    body = render_ui_page(scan_path, fail_on, notice=f"{action} approval: {msg}", ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, notice=f"{action} approval: {msg}", ui_state=ui_state)
                 elif self.path == "/setup":
                     cmd_setup(
                         argparse.Namespace(
                             path=str(scan_path),
                             fail_on=fail_on if fail_on in SEVERITY_ORDER else default_fail_on,
                             force=True,
+                            install_scope=install_mode.label,
+                            protection_scope=get_protection_scope(scan_path),
                         )
                     )
+                    shell_guard_status = get_current_shell_guard_status(scan_path)
                     refreshed_result, refreshed_outdir = run_scan_pipeline(
                         root=scan_path,
                         policy_arg=(form.get("policy", [""])[0] or None),
@@ -571,17 +771,31 @@ def cmd_ui(args):
                         spdx="",
                         html="",
                     )
-                    body = render_ui_page(
+                    body = render_page(
                         scan_path,
                         fail_on,
                         result=refreshed_result,
                         outdir=refreshed_outdir,
-                        notice="Project setup completed. Activate guard with: source .safedeps/activate.sh (bash) or . .safedeps/activate.ps1 (PowerShell)",
+                        notice=(
+                            f"Setup completed for {scan_path} (equivalent to: safedeps setup {scan_path}). "
+                            "Activate this shell with: source .safedeps/activate.sh (bash) or . .safedeps/activate.ps1 (PowerShell). "
+                            f"Current shell wrapper status: {shell_guard_status}"
+                        ),
                         ui_state=ui_state,
                     )
                 elif self.path == "/guard":
                     guard_action = (form.get("guard_action", [""])[0] or "").strip().lower()
-                    notice_text = apply_guard_toggle(scan_path, guard_action)
+                    setup_note = ""
+                    ok_guard_action, guard_action_error = _install_mode(scan_path, install_mode.label).can_set_guard_action(guard_action)
+                    if not ok_guard_action:
+                        raise ValueError(guard_action_error)
+                    enforce_project_scope_if_needed(scan_path)
+                    if guard_action == "set_scope_project" and not scan_path.exists():
+                        raise ValueError("Select a valid project root path before switching to Project scope.")
+                    if guard_action == "set_scope_project":
+                        _refresh_project_setup_for_system_scope()
+                        setup_note = "Project guard setup completed for the selected root. "
+                    notice_text = apply_guard_toggle(scan_path, guard_action, install_scope=install_mode.label)
                     refreshed_result, refreshed_outdir = run_scan_pipeline(
                         root=scan_path,
                         policy_arg=(form.get("policy", [""])[0] or None),
@@ -593,9 +807,14 @@ def cmd_ui(args):
                         spdx="",
                         html="",
                     )
-                    body = render_ui_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=notice_text, ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=f"{setup_note}{notice_text}", ui_state=ui_state)
                 elif self.path == "/deps":
-                    notice_text = apply_dependency_action(
+                    action_scope = (form.get("dep_runtime_scope", [""])[0] or "").strip().lower()
+                    action_scope = _install_mode(scan_path, install_mode.label).action_scope(
+                        action_scope,
+                        get_protection_scope(scan_path),
+                    )
+                    notice_text, action_output = apply_dependency_action(
                         root=scan_path,
                         manager=(form.get("dep_manager", [""])[0] or "").strip().lower(),
                         action=(form.get("dep_action", [""])[0] or "").strip().lower(),
@@ -604,7 +823,9 @@ def cmd_ui(args):
                         mode=(form.get("dep_mode", [""])[0] or "manual").strip().lower(),
                         approved=(form.get("dep_approved", ["off"])[0] == "on"),
                         approval_note="",
+                        action_scope=action_scope,
                     )
+                    ui_state["dependency_output"] = action_output
                     refreshed_result, refreshed_outdir = run_scan_pipeline(
                         root=scan_path,
                         policy_arg=(form.get("policy", [""])[0] or None),
@@ -616,7 +837,7 @@ def cmd_ui(args):
                         spdx="",
                         html="",
                     )
-                    body = render_ui_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=notice_text, ui_state=ui_state)
+                    body = render_page(scan_path, fail_on, result=refreshed_result, outdir=refreshed_outdir, notice=notice_text, ui_state=ui_state)
                 else:
                     if self.path == "/policy":
                         notice_text = apply_policy_quick_update(
@@ -627,16 +848,16 @@ def cmd_ui(args):
                             registry=(form.get("policy_registry", [""])[0] or "").strip(),
                             policy_path=(form.get("policy_path", [""])[0] or "").strip(),
                         )
-                        body = render_ui_page(scan_path, fail_on, notice=notice_text, ui_state=ui_state)
+                        body = render_page(scan_path, fail_on, notice=notice_text, ui_state=ui_state)
                     else:
                         action = (form.get("intel_action", ["save"])[0] or "save").strip().lower()
                         if action == "template":
                             create_intelligence_templates(scan_path)
                             ui_state = load_intelligence_into_state(ui_state, scan_path)
-                            body = render_ui_page(scan_path, fail_on, notice="Intelligence templates created.", ui_state=ui_state)
+                            body = render_page(scan_path, fail_on, notice="Intelligence templates created.", ui_state=ui_state)
                         else:
                             save_intelligence_from_state(scan_path, ui_state)
-                            body = render_ui_page(scan_path, fail_on, notice="Intelligence files saved and validated.", ui_state=ui_state)
+                            body = render_page(scan_path, fail_on, notice="Intelligence files saved and validated.", ui_state=ui_state)
             except Exception as e:
                 refreshed_result = None
                 refreshed_outdir = None
@@ -656,8 +877,11 @@ def cmd_ui(args):
                     pass
                 err_text = str(e)
                 if self.path == "/deps":
+                    ui_state["dependency_output"] = f"Error: {_format_dependency_ui_error(err_text)}"
                     err_text = _format_dependency_ui_error(err_text)
-                body = render_ui_page(
+                else:
+                    err_text = _format_dependency_ui_error(err_text)
+                body = render_page(
                     scan_path,
                     fail_on,
                     result=refreshed_result,
@@ -669,11 +893,14 @@ def cmd_ui(args):
 
         def _send_html(self, body: str):
             data = body.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                return
 
         def log_message(self, format, *args):
             return
@@ -681,6 +908,7 @@ def cmd_ui(args):
     server = None
     bind_port = int(port)
     last_err = None
+    first_error = None
     for p in range(bind_port, bind_port + 25):
         try:
             server = ThreadingHTTPServer((host, p), UIHandler)
@@ -688,9 +916,13 @@ def cmd_ui(args):
             break
         except OSError as e:
             last_err = e
+            if p == bind_port and first_error is None:
+                first_error = e
             continue
     if server is None:
         raise last_err if last_err else RuntimeError("Unable to bind UI server port.")
+    if bind_port != int(port) and first_error is not None:
+        print(f"SafeDeps UI port {port} not available ({first_error}); using {bind_port}.")
     url = f"http://{host}:{bind_port}/"
     print(f"SafeDeps UI running at {url}")
     print(f"Workspace: {start_path}")
@@ -733,10 +965,18 @@ def cmd_help(args):
     print("- Pinned install example: pip install colorama==0.4.6")
     return 0
 
+def cmd_version(args):
+    print(__version__)
+    return 0
+
 def cmd_guard_cleanup(args):
     root = Path(args.path).resolve()
     try:
-        _guard._set_powershell_autoguard(root, False)
+        _guard.cleanup_guard_install(
+            root,
+            remove_project_artifacts=bool(getattr(args, "remove_project_artifacts", False)),
+            disable_auto_guard=True,
+        )
     except Exception:
         pass
     return 0
@@ -749,14 +989,26 @@ def render_ui_page(
     error: str = "",
     notice: str = "",
     ui_state: dict | None = None,
+    install_scope: str | None = None,
 ):
     state = ui_state or default_ui_state(scan_path, fail_on)
     state = load_intelligence_into_state(state, scan_path)
     setup_status = get_setup_status(scan_path)
     guard_status = get_guard_mode_status(scan_path)
+    install_mode = _install_mode(scan_path, install_scope)
+    install_scope = install_mode.label
+    install_scope_forbidden_global = not install_mode.global_scope_available
     scope_mode = get_protection_scope(scan_path)
     auto_guard_enabled = _is_auto_guard_enabled(scan_path)
-    deps_html = render_dependency_table(result, state["fail_on"], scan_path) if result is not None else "<p class='hint'>Run a scan to load dependencies and quick actions.</p>"
+    runtime_python = install_mode.system_runtime_python()
+    project_runtime_python = install_mode.project_runtime_python() or "Not detected"
+    deps_html = render_dependency_table(
+        result,
+        state["fail_on"],
+        scan_path,
+        scope_mode,
+        installation_scope=install_scope,
+    ) if result is not None else "<p class='hint'>Run a scan to load dependencies and quick actions.</p>"
     shell_guard_status = get_current_shell_guard_status(scan_path)
     options = "".join(
         f"<option value=\"{s}\"{' selected' if s == state['fail_on'] else ''}>{s}</option>"
@@ -764,7 +1016,21 @@ def render_ui_page(
     )
     status_html = ""
     if error:
-        status_html = f"<div class='error'>Scan error: {_html_escape(error)}</div>"
+        error_prefix = "Scan error"
+        action_error_starts = (
+            "Uninstall blocked:",
+            "Update blocked:",
+            "Blocked:",
+            "pip install failed:",
+            "pip update failed:",
+            "pip uninstall failed:",
+            "npm install failed:",
+            "npm update failed:",
+            "npm uninstall failed:",
+        )
+        if any(str(error).startswith(prefix) for prefix in action_error_starts):
+            error_prefix = "Dependency action error"
+        status_html = f"<div class='error'>{error_prefix}: {_html_escape(error)}</div>"
     elif notice:
         status_html = f"<div class='notice'>{_html_escape(notice)}</div>"
     elif result is not None:
@@ -775,6 +1041,12 @@ def render_ui_page(
             "</div>"
         )
     checked = " checked" if state.get("online_audit") else ""
+    project_action_help = ""
+    if install_scope_forbidden_global:
+        project_action_help = "SafeDeps is installed in a virtual environment; Global scope is locked."
+    scope_help_hint = ""
+    if project_action_help:
+        scope_help_hint = f"<div class='hint'>{project_action_help}</div>"
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -801,6 +1073,24 @@ def render_ui_page(
     h2 {{ margin:24px 0 10px; font-size:18px; }}
     .sub {{ margin:0 0 16px; color:var(--muted); }}
     form {{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 16px; }}
+    #scan-form .path-row {{ display:flex; gap:8px; align-items:center; }}
+    #scan-form .path-row input {{ flex:1; }}
+    #scan-form .pick {{ width:auto; white-space:nowrap; }}
+    .console-output {{
+      margin: 0;
+      padding: 12px;
+      min-height: 120px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--hero-ink) 4%, transparent);
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.35;
+    }}
     label {{ display:block; font-size:13px; margin-bottom:4px; }}
     input, select {{ width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--panel); color:var(--ink); }}
     textarea {{ width:100%; min-height:160px; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--panel); color:var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }}
@@ -1063,8 +1353,13 @@ def render_ui_page(
             <div class="status-value" id="autoguard-status-line">{_html_escape(guard_status)}</div>
           </div>
           <div class="status-card">
+            <div class="status-label">Runtime Python</div>
+            <div class="status-value">{_html_escape(runtime_python)}</div>
+          </div>
+          <div class="status-card">
             <div class="status-label">Current Shell</div>
             <div class="status-value" id="shellguard-status-line">{_html_escape(shell_guard_status)}</div>
+            <div class="status-sub">{_html_escape(project_runtime_python)}</div>
           </div>
         </div>
         <div class="guard-bar">
@@ -1079,8 +1374,8 @@ def render_ui_page(
                 <input type="hidden" name="path" value="{_html_escape(state['path'])}" />
                 <input type="hidden" name="fail_on" value="{_html_escape(state['fail_on'])}" />
                 <div class="segmented auto-toggle" role="tablist" aria-label="Auto guard toggle">
-                  <button type="submit" name="guard_action" value="enable_auto" class="{'active on' if auto_guard_enabled else ''}" title="Enable auto guard in future PowerShell sessions.">Auto ON</button>
-                  <button type="submit" name="guard_action" value="disable_auto" class="{'active off' if not auto_guard_enabled else ''}" title="Disable auto guard in future PowerShell sessions.">Auto OFF</button>
+                  <button type="submit" name="guard_action" value="enable_auto" class="{'active on' if auto_guard_enabled else ''}" title="Enable auto guard in future Windows shell sessions.">Auto ON</button>
+                  <button type="submit" name="guard_action" value="disable_auto" class="{'active off' if not auto_guard_enabled else ''}" title="Disable auto guard in future Windows shell sessions.">Auto OFF</button>
                 </div>
               </form>
             </div>
@@ -1089,16 +1384,22 @@ def render_ui_page(
               <input type="hidden" name="fail_on" value="{_html_escape(state['fail_on'])}" />
               <div class="segmented" role="tablist" aria-label="Protection scope">
                 <button type="submit" name="guard_action" value="set_scope_project" class="{'active' if scope_mode == 'project' else ''}" title="Protect only this project context.">Project</button>
-                <button type="submit" name="guard_action" value="set_scope_global" class="{'active' if scope_mode == 'global' else ''}" title="Protect commands globally in this shell profile context.">Global</button>
+                <button type="submit" name="guard_action" value="set_scope_global" class="{'active' if scope_mode == 'global' else ''}" title="Protect commands globally in this shell profile context." { "disabled" if install_scope_forbidden_global else "" }>Global</button>
               </div>
             </form>
           </div>
+          {scope_help_hint}
         </div>
       </div>
       <div class="section" id="section-scan">
       <h2>1) Run Scan</h2>
       <form method="post" autocomplete="off" action="/scan" id="scan-form" data-ajax="1" data-pending="section-scan">
-        <div class="full"><label title="Folder to scan.">Project path</label><input name="path" value="{_html_escape(state['path'])}" title="Absolute or relative path to the project root." /></div>
+        <div class="full path-row">
+          <label title="Folder to scan.">Project path</label>
+          <input id="scan-path-input" name="path" value="{_html_escape(state['path'])}" title="Absolute or relative path to the project root." />
+          <input type="file" id="project-folder-picker" style="display:none" webkitdirectory directory multiple />
+          <button type="button" class="ghost pick" id="browse-project-root">Browse</button>
+        </div>
         <div><label title="Severity threshold that makes the scan fail.">Fail on</label><select name="fail_on" title="Findings at or above this level mark the scan as failed.">{options}</select></div>
         <div><label title="Where reports and artifacts are written.">Output dir</label><input name="out" value="{_html_escape(state['out'])}" title="Output directory for scan artifacts." /></div>
         <div><label title="Optional custom policy file.">Policy file (optional)</label><input name="policy" value="{_html_escape(state['policy'])}" placeholder=".safedeps/policy.json" title="Leave empty to use default policy." /></div>
@@ -1128,9 +1429,10 @@ def render_ui_page(
       <div class="section" id="section-deps-manage">
       <h2>3) Manage Dependencies (Guided)</h2>
       <p class="sub">Use this area if you want SafeDeps to execute package changes for you. Example: install `colorama` with version `0.4.6`, or run `Safe Update` for one package only.</p>
-      <form method="post" autocomplete="off" action="/deps" id="deps-form" data-ajax="1" data-pending="section-deps-manage">
+        <form method="post" autocomplete="off" action="/deps" id="deps-form" data-ajax="1" data-pending="section-deps-manage">
         <input type="hidden" name="path" value="{_html_escape(state['path'])}" />
         <input type="hidden" name="fail_on" value="{_html_escape(state['fail_on'])}" />
+        <input type="hidden" id="dep-runtime-scope" name="dep_runtime_scope" value="" />
         <div><label title="Package manager to execute action with.">Manager</label>
           <select name="dep_manager" id="dep-manager">
             <option value="pip">pip</option>
@@ -1158,9 +1460,24 @@ def render_ui_page(
         <div class="full hint">Safety: install/update runs a pre-check scan and blocks if CRITICAL findings are present. If package trust is uncertain, explicit approval is required.</div>
         <div class="full actions"><button type="submit" title="Execute dependency operation with SafeDeps checks.">Apply Dependency Action</button></div>
       </form>
+      <details class="card" style="margin-top:12px;">
+        <summary style="cursor:pointer; font-weight:700;">Test Dependency Guard (console)</summary>
+        <div class="sub">Run controlled install/uninstall checks to quickly verify current scope enforcement.</div>
+        <div class="section-loading-actions quick-actions" style="margin-top:12px;">
+          <button type="button" onclick="runGuardProbe('pip', 'install', 'colorama', '0.4.6', 'manual')">Test pip install (pin)</button>
+          <button type="button" class="danger" onclick="runGuardProbe('pip', 'uninstall', 'colorama', '', 'manual')">Test pip uninstall</button>
+          <button type="button" onclick="runGuardProbe('npm', 'install', 'lodash', '4.17.21', 'manual')">Test npm install (pin)</button>
+          <button type="button" class="danger" onclick="runGuardProbe('npm', 'uninstall', 'lodash', '', 'manual')">Test npm uninstall</button>
+        </div>
+      </details>
       </div>
+      <details class="section" id="section-deps-console">
+        <summary>4) Dependency Action Console <span class="adv-tag">(Advanced)</span></summary>
+        <p class="sub">This output is captured from the action command path and stays visible after each operation.</p>
+        <pre id="dependency-console" class="console-output">{_html_escape(state.get('dependency_output', 'No dependency action executed yet.'))}</pre>
+      </details>
       <details class="section" id="section-rule-help">
-      <summary>4) Explain Scan Warnings/Errors <span class="adv-tag">(Advanced)</span></summary>
+      <summary>5) Explain Scan Warnings/Errors <span class="adv-tag">(Advanced)</span></summary>
       <p class="sub">Use this when SafeDeps shows a warning/error code and you do not understand it. Enter the exact code from findings (example: `FLOATING_VERSION`, `UNPINNED_VERSION`, `MISSING_LOCKFILE`).</p>
       <form method="post" autocomplete="off" action="/explain" data-ajax="1" data-pending="section-rule-help">
         <input type="hidden" name="path" value="{_html_escape(state['path'])}" />
@@ -1274,7 +1591,94 @@ def render_ui_page(
           localStorage.setItem("safedeps-theme", next);
         }});
       }}
+      const initialPath = document.getElementById("scan-path-input");
+      if (initialPath) {{
+        syncPathInputs(initialPath.value);
+      }}
+
+      document.addEventListener("submit", function(event) {{
+        const form = event.target;
+        if (!form || form.tagName !== "FORM") return;
+        const activePathInput = document.getElementById("scan-path-input");
+        if (!activePathInput) return;
+        const activePath = activePathInput.value;
+        if (!activePath) return;
+        form.querySelectorAll('input[name="path"]').forEach((el) => {{
+          el.value = activePath;
+        }});
+      }});
     }})();
+    function syncPathInputs(nextValue) {{
+      if (!nextValue) return;
+      document.querySelectorAll('input[name="path"]').forEach((el) => {{
+        el.value = nextValue;
+      }});
+      const scanInput = document.getElementById("scan-path-input");
+      if (scanInput) scanInput.value = nextValue;
+    }}
+    (function wirePathInput() {{
+      const scanInput = document.getElementById("scan-path-input");
+      const browseBtn = document.getElementById("browse-project-root");
+      const picker = document.getElementById("project-folder-picker");
+      if (scanInput) {{
+        const syncScanInput = function() {{
+          syncPathInputs(scanInput.value);
+        }};
+        scanInput.addEventListener("change", syncScanInput);
+        scanInput.addEventListener("input", syncScanInput);
+        scanInput.addEventListener("blur", syncScanInput);
+      }}
+      if (scanInput) {{
+        syncScanInput(scanInput.value);
+      }}
+      if (browseBtn && picker) {{
+        browseBtn.addEventListener("click", function() {{
+          picker.value = "";
+          picker.click();
+        }});
+      }}
+      if (picker) {{
+        picker.addEventListener("change", function() {{
+          const first = picker.files && picker.files[0];
+          if (!first) return;
+          const raw = first.webkitRelativePath || first.name || "";
+          if (!raw) return;
+          const folder = raw.split("/")[0];
+          if (folder) {{
+            scanInput.value = folder;
+            syncPathInputs(folder);
+          }} else {{
+            const msg = "Unable to resolve selected folder path from browser picker.";
+            console.warn(msg);
+          }}
+        }});
+      }}
+    }})();
+    function normalizeInstallVersionInput(value) {{
+      return (value || "").trim();
+    }}
+    function runGuardProbe(manager, action, pkg, version, mode) {{
+      const m = document.getElementById("dep-manager");
+      const a = document.getElementById("dep-action");
+      const p = document.getElementById("dep-package");
+      const v = document.getElementById("dep-version");
+      const md = document.getElementById("dep-mode");
+      const ap = document.getElementById("dep-approved");
+      const ds = document.getElementById("dep-runtime-scope");
+      const consoleSection = document.getElementById("section-deps-console");
+      if (consoleSection) {{
+        consoleSection.open = true;
+      }}
+      if (m) m.value = manager || "pip";
+      if (a) a.value = action || "install";
+      if (p) p.value = pkg || "";
+      if (v) v.value = normalizeInstallVersionInput(version) || "";
+      if (md) md.value = mode || "manual";
+      if (ap) ap.checked = false;
+      if (ds) ds.value = "";
+      const row = document.querySelector(`tr[data-manager="${{(manager || "pip").toLowerCase()}}"][data-package="${{(pkg || "").toLowerCase()}}"]`);
+      submitFormAjax("deps-form", row, action === "uninstall");
+    }}
     function setApprovalFields(manager, rule, pkg, filePath) {{
       const m = document.getElementById("approve-manager");
       const r = document.getElementById("approve-rule");
@@ -1353,20 +1757,30 @@ def render_ui_page(
       closeDepApprovalModal();
       await submitFormAjax("deps-form", row, false);
     }}
-    function executeDependencyAction(manager, action, pkg, mode) {{
+    function executeDependencyAction(manager, action, pkg, mode, depScope) {{
       const m = document.getElementById("dep-manager");
       const a = document.getElementById("dep-action");
       const p = document.getElementById("dep-package");
       const v = document.getElementById("dep-version");
       const md = document.getElementById("dep-mode");
       const ap = document.getElementById("dep-approved");
+      const ds = document.getElementById("dep-runtime-scope");
       if (m) m.value = manager || "pip";
       if (a) a.value = action || "update";
       if (p) p.value = pkg || "";
       if (v) v.value = "";
       if (md) md.value = mode || "auto";
       if (ap) ap.checked = false;
-      const row = document.querySelector(`tr[data-manager="${{manager.toLowerCase()}}"][data-package="${{pkg.toLowerCase()}}"]`);
+      if (ds) {{
+        ds.value = depScope || "";
+      }}
+      const selectedScope = (depScope || "").toLowerCase();
+      const scopedRow = document.querySelector(
+        `tr[data-manager="${{manager.toLowerCase()}}"][data-package="${{pkg.toLowerCase()}}"][data-runtime-scope="${{selectedScope}}"]`
+      ) || document.querySelector(
+        `tr[data-manager="${{manager.toLowerCase()}}"][data-package="${{pkg.toLowerCase()}}"][data-scope="${{selectedScope}}"]`
+      );
+      const row = scopedRow || document.querySelector(`tr[data-manager="${{manager.toLowerCase()}}"][data-package="${{pkg.toLowerCase()}}"]`);
       if (action === "update" && (mode || "").toLowerCase() === "auto") {{
         openDepApprovalModal({{ manager, action, pkg, mode, row }});
         return;
@@ -1483,12 +1897,14 @@ def render_ui_page(
       const doc = parser.parseFromString(htmlText, "text/html");
       const prevRows = new Map();
       document.querySelectorAll("#deps-table-wrap tbody tr[data-manager][data-package]").forEach(tr => {{
-        const k = `${{tr.dataset.manager}}|${{tr.dataset.package}}`;
+        const scope = tr.dataset.runtimeScope || tr.dataset.scope || "";
+        const k = `${{tr.dataset.manager}}|${{tr.dataset.package}}|${{scope}}`;
         prevRows.set(k, tr.getBoundingClientRect());
       }});
       const ids = [
         "hero-wrap", "section-scan", "section-deps-view", "section-deps-manage",
         "section-rule-help", "section-baseline", "section-policy", "section-intel",
+        "section-deps-console",
         "deps-table-wrap", "status-wrap", "pip-guard-wrap", "findings-wrap",
         "setup-status-line", "autoguard-status-line", "shellguard-status-line"
       ];
@@ -1499,9 +1915,14 @@ def render_ui_page(
           dst.innerHTML = src.innerHTML;
         }}
       }});
+      const updatedScanPath = doc.getElementById("scan-path-input");
+      if (updatedScanPath && updatedScanPath.value) {{
+        syncPathInputs(updatedScanPath.value);
+      }}
       const newRows = new Map();
       document.querySelectorAll("#deps-table-wrap tbody tr[data-manager][data-package]").forEach(tr => {{
-        const k = `${{tr.dataset.manager}}|${{tr.dataset.package}}`;
+        const scope = tr.dataset.runtimeScope || tr.dataset.scope || "";
+        const k = `${{tr.dataset.manager}}|${{tr.dataset.package}}|${{scope}}`;
         newRows.set(k, tr);
       }});
       newRows.forEach((tr, k) => {{
@@ -1530,6 +1951,11 @@ def render_ui_page(
       }}
       try {{
         const fd = new FormData(form);
+        const scanPathInput = document.getElementById("scan-path-input");
+        if (scanPathInput && scanPathInput.value) {{
+          fd.set("path", scanPathInput.value);
+          syncPathInputs(scanPathInput.value);
+        }}
         const btn = submitter || form.__lastSubmitter;
         if (btn && btn.name) {{
           fd.append(btn.name, btn.value || "");
@@ -1581,20 +2007,136 @@ def render_findings_table(result: ScanResult):
         f"<tbody>{''.join(rows)}</tbody></table>"
     )
 
-def render_dependency_table(result: ScanResult, fail_on: str, root: Path):
-    comps = _unique_components(result.sbom.get("components", []))
-    runtime = collect_runtime_components(root)
-    if runtime:
-        comps.extend(runtime)
-        comps = _unique_components(comps)
-    if not comps:
+def _is_runtime_component(component: dict) -> bool:
+    scope = str(component.get("scope", "")).strip().lower()
+    return scope.startswith("runtime:")
+
+def render_dependency_table(
+    result: ScanResult,
+    fail_on: str,
+    root: Path,
+    protection_scope: str = "project",
+    installation_scope: str | None = None,
+):
+    components = _unique_components(result.sbom.get("components", []))
+    mode = _install_mode(root, installation_scope)
+    install_scope = mode.label
+    project_py = mode.project_runtime_python()
+    system_runtime: list[dict] = []
+    project_runtime: list[dict] = []
+
+    if mode.is_system_install:
+        system_runtime = collect_runtime_components(
+            root,
+            python_executable=mode.system_runtime_python(),
+            runtime_scope="runtime:system",
+            fallback_to_process=False,
+        )
+        if project_py and _has_project_runtime_candidates(root):
+            project_runtime = collect_runtime_components(
+                root,
+                python_executable=project_py,
+                runtime_scope="runtime:project",
+                fallback_to_process=False,
+                local_only=True,
+            )
+    else:
+        if project_py:
+            project_runtime = collect_runtime_components(
+                root,
+                python_executable=project_py,
+                runtime_scope="runtime:project",
+                fallback_to_process=False,
+                local_only=True,
+            )
+
+    if system_runtime:
+        components.extend(system_runtime)
+    if project_runtime:
+        components.extend(project_runtime)
+    if system_runtime or project_runtime:
+        components = _unique_components(components)
+
+    if not components:
         return "<p class='hint'>No dependencies detected in the current scan.</p>"
+
+    def _runtime_bucket(component: dict) -> str:
+        scope = str(component.get("scope", "")).strip().lower()
+        if scope.startswith("runtime:project"):
+            return "project"
+        if scope.startswith("runtime:system"):
+            return "system"
+        if scope.startswith("runtime:"):
+            return "system"
+        return ""
+
+    if mode.is_project_install:
+        project_only_components = [
+            c for c in components
+            if not _is_runtime_component(c) or _runtime_bucket(c) == "project"
+        ]
+        project_table = _render_dependency_rows_table(result, fail_on, project_only_components)
+        if project_table:
+            return (
+                "<details open class='card' style='margin-top:12px;'>"
+                "<summary style='cursor:pointer; font-weight:700;' title='Dependencies detected for this project environment.'>Project dependencies</summary>"
+                f"<div id='project-deps-wrap'>{project_table}</div></details>"
+            )
+        return "<p class='hint'>No project dependencies detected for this scope.</p>"
+
+    project_components = [c for c in components if not _is_runtime_component(c)]
+    runtime_components = [c for c in components if _is_runtime_component(c)]
+    system_runtime_components = [
+        c for c in runtime_components
+        if _runtime_bucket(c) == "system"
+    ]
+    project_runtime_components = [
+        c for c in runtime_components
+        if _runtime_bucket(c) == "project"
+    ]
+    system_runtime_table = _render_dependency_rows_table(result, fail_on, system_runtime_components) if system_runtime_components else ""
+    project_runtime_table = _render_dependency_rows_table(result, fail_on, project_runtime_components) if project_runtime_components else ""
+
+    project_table = _render_dependency_rows_table(result, fail_on, project_components)
+    if project_table:
+        out = (
+            "<details open class='card' style='margin-top:12px;'>"
+            "<summary style='cursor:pointer; font-weight:700;' title='Dependencies declared in the selected project files.'>Project dependencies</summary>"
+            f"<div id='project-deps-wrap'>{project_table}</div></details>"
+        )
+    else:
+        out = ""
+
+    if project_runtime_table:
+        out += (
+            "<details class='card' style='margin-top:12px;'>"
+            "<summary style='cursor:pointer; font-weight:700;' title='Project runtime environment dependencies for the selected project path.'>Project runtime dependencies</summary>"
+            f"<div id='project-runtime-deps-wrap'>{project_runtime_table}</div></details>"
+        )
+
+    if system_runtime_table:
+        out += (
+            "<details class='card' style='margin-top:12px;'>"
+            "<summary style='cursor:pointer; font-weight:700;' title='System-wide runtime dependencies for the active SafeDeps interpreter.'>System/runtime dependencies</summary>"
+            f"<div id='runtime-deps-wrap'>{system_runtime_table}</div></details>"
+        )
+
+    if out:
+        return out
+
+    return "<p class='hint'>No dependencies detected for this scope.</p>"
+
+def _render_dependency_rows_table(result: ScanResult, fail_on: str, components: list[dict]):
+    if not components:
+        return "<p class='hint'>No dependencies detected for this scope.</p>"
 
     threshold = SEVERITY_ORDER.get(fail_on, SEVERITY_ORDER["HIGH"])
     by_pkg = {}
-    for c in comps:
+    for c in components:
         manager = str(c.get("manager", "")).strip()
         name = str(c.get("name", "")).strip()
+        scope = str(c.get("scope", "")).strip().lower()
+        version = str(c.get("version", "")).strip()
         if not manager or not name:
             continue
         key = (manager.lower(), name.lower())
@@ -1602,24 +2144,40 @@ def render_dependency_table(result: ScanResult, fail_on: str, root: Path):
             by_pkg[key] = {
                 "manager": manager,
                 "name": name,
-                "version": str(c.get("version", "")).strip(),
+                "declared_version": "",
+                "installed_version": "",
+                "runtime_scope": "",
+                "scopes": set(),
                 "findings": [],
             }
-        elif not by_pkg[key]["version"]:
-            by_pkg[key]["version"] = str(c.get("version", "")).strip()
+        by_pkg[key]["scopes"].add(scope)
+        if scope.startswith("runtime:"):
+            if not by_pkg[key]["installed_version"]:
+                by_pkg[key]["installed_version"] = version
+            if scope.startswith("runtime:project"):
+                by_pkg[key]["runtime_scope"] = "project"
+            elif not by_pkg[key]["runtime_scope"]:
+                by_pkg[key]["runtime_scope"] = "system"
+        elif not by_pkg[key]["declared_version"]:
+            by_pkg[key]["declared_version"] = version
 
     for f in result.findings:
         if not f.package:
             continue
-        key = (str(f.manager or "").lower(), str(f.package or "").lower())
-        if key not in by_pkg:
-            by_pkg[key] = {
+        finding_manager = str(f.manager or "").lower()
+        finding_package = str(f.package or "").lower()
+        target_key = (finding_manager, finding_package)
+        if target_key not in by_pkg:
+            by_pkg[target_key] = {
                 "manager": str(f.manager or "").strip() or "unknown",
                 "name": str(f.package or "").strip(),
-                "version": "",
+                "declared_version": "",
+                "installed_version": "",
+                "runtime_scope": "",
+                "scopes": set(),
                 "findings": [],
             }
-        by_pkg[key]["findings"].append(f)
+        by_pkg[target_key]["findings"].append(f)
 
     rows = []
     for dep in sorted(by_pkg.values(), key=lambda x: (x["manager"].lower(), x["name"].lower())):
@@ -1633,6 +2191,8 @@ def render_dependency_table(result: ScanResult, fail_on: str, root: Path):
         rules = ", ".join(sorted({f.rule for f in findings})) if findings else "-"
         primary = findings[0] if findings else None
         quick = ""
+        dep_scope = str(dep.get("runtime_scope", "")).strip().lower()
+        scope_attr = ";".join(sorted(dep.get("scopes", set())))
         if primary:
             approve_btn = (
                 f"<button class='pick' type='button' "
@@ -1641,32 +2201,33 @@ def render_dependency_table(result: ScanResult, fail_on: str, root: Path):
             )
             uninstall_btn = (
                 f"<button class='ghost' type='button' "
-                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','uninstall','{_js_escape(dep['name'])}','manual')\">"
+                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','uninstall','{_js_escape(dep['name'])}','manual','{_js_escape(dep_scope)}')\">"
                 "Uninstall</button>"
             )
             safe_update_btn = (
                 f"<button type='button' "
-                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','update','{_js_escape(dep['name'])}','auto')\">"
+                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','update','{_js_escape(dep['name'])}','auto','{_js_escape(dep_scope)}')\">"
                 "Safe Update</button>"
             )
             quick = f"<div class='quick-actions'>{approve_btn}{uninstall_btn}{safe_update_btn}</div>"
         else:
             uninstall_btn = (
                 f"<button class='ghost' type='button' "
-                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','uninstall','{_js_escape(dep['name'])}','manual')\">"
+                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','uninstall','{_js_escape(dep['name'])}','manual','{_js_escape(dep_scope)}')\">"
                 "Uninstall</button>"
             )
             safe_update_btn = (
                 f"<button type='button' "
-                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','update','{_js_escape(dep['name'])}','auto')\">"
+                f"onclick=\"executeDependencyAction('{_js_escape(dep['manager'])}','update','{_js_escape(dep['name'])}','auto','{_js_escape(dep_scope)}')\">"
                 "Safe Update</button>"
             )
             quick = f"<div class='quick-actions'><span class='action-slot' aria-hidden='true'></span>{uninstall_btn}{safe_update_btn}</div>"
         rows.append(
-            f"<tr data-manager=\"{_html_escape(dep['manager'].lower())}\" data-package=\"{_html_escape(dep['name'].lower())}\">"
+            f"<tr data-manager=\"{_html_escape(dep['manager'].lower())}\" data-package=\"{_html_escape(dep['name'].lower())}\" data-scope=\"{_html_escape(scope_attr)}\" data-runtime-scope=\"{_html_escape(dep_scope)}\">"
             f"<td>{_html_escape(dep['manager'])}</td>"
             f"<td>{_html_escape(dep['name'])}</td>"
-            f"<td>{_html_escape(dep['version'] or '(unresolved)')}</td>"
+            f"<td>{_html_escape(dep['declared_version'] or '-')}</td>"
+            f"<td>{_html_escape(dep['installed_version'] or '-')}</td>"
             f"<td>{_html_escape(worst)}</td>"
             f"<td>{_html_escape(status)}</td>"
             f"<td>{_html_escape(rules)}</td>"
@@ -1676,21 +2237,41 @@ def render_dependency_table(result: ScanResult, fail_on: str, root: Path):
 
     return (
         "<table><thead><tr>"
-        "<th>Manager</th><th>Package</th><th>Version</th><th>Worst Severity</th><th>Status</th><th>Rules</th><th>Quick Action</th>"
+        "<th>Manager</th><th>Package</th><th>Declared</th><th>Installed</th><th>Worst Severity</th><th>Status</th><th>Rules</th><th>Quick Action</th>"
         "</tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
     )
 
-def collect_runtime_components(root: Path):
+def collect_runtime_components(
+    root: Path,
+    *,
+    python_executable: str | None = None,
+    runtime_scope: str = "runtime",
+    fallback_to_process: bool = False,
+    local_only: bool = False,
+):
+    if not python_executable:
+        python_executable = _detect_project_runtime_python(root)
+    if not python_executable and not fallback_to_process:
+        return []
+    if not python_executable:
+        python_executable = str(Path(sys.executable).resolve())
+    scope_prefix = (runtime_scope or "runtime").strip().rstrip(":")
+    if not scope_prefix:
+        scope_prefix = "runtime"
     out = []
     # Python runtime packages from current interpreter environment.
     try:
+        pip_cmd = [python_executable, "-m", "pip", "list", "--format", "json"]
+        if local_only:
+            pip_cmd.append("--local")
         proc = subprocess.run(
-            [sys.executable, "-m", "pip", "list", "--format", "json"],
+            pip_cmd,
             cwd=str(root),
             capture_output=True,
             text=True,
             check=False,
+            timeout=8,
         )
         if proc.returncode == 0:
             data = json.loads(proc.stdout or "[]")
@@ -1701,7 +2282,13 @@ def collect_runtime_components(root: Path):
                     name = str(item.get("name", "")).strip()
                     ver = str(item.get("version", "")).strip()
                     if name:
-                        out.append({"type": "library", "manager": "pip", "name": name, "version": ver, "scope": "runtime:pip"})
+                        out.append({
+                            "type": "library",
+                            "manager": "pip",
+                            "name": name,
+                            "version": ver,
+                            "scope": f"{scope_prefix}:pip",
+                        })
     except Exception:
         pass
 
@@ -1714,6 +2301,7 @@ def collect_runtime_components(root: Path):
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=8,
             )
             if proc.returncode == 0:
                 data = json.loads(proc.stdout or "{}")
@@ -1725,7 +2313,13 @@ def collect_runtime_components(root: Path):
                         ver = ""
                         if isinstance(meta, dict):
                             ver = str(meta.get("version", "")).strip()
-                        out.append({"type": "library", "manager": "npm", "name": name.strip(), "version": ver, "scope": "runtime:npm"})
+                        out.append({
+                            "type": "library",
+                            "manager": "npm",
+                            "name": name.strip(),
+                            "version": ver,
+                            "scope": f"{scope_prefix}:npm",
+                        })
     except Exception:
         pass
 
@@ -1836,8 +2430,16 @@ def _run_cmd(args: list[str], cwd: Path):
     text = out if out else err
     return proc.returncode, text
 
+def _format_command_output(args: list[str], result_code: int, text: str):
+    cmd = " ".join(shlex.quote(a) for a in args)
+    if text:
+        return f"$ {cmd}\n{text}\nexit code: {result_code}"
+    return f"$ {cmd}\n(exit code: {result_code})"
+
 def _format_dependency_ui_error(raw: str):
     text = str(raw or "").strip()
+    if text.startswith("Uninstall blocked:"):
+        return text
     if "Explicit approval required before this dependency change." in text:
         return (
             "Update blocked for safety. We could not verify trusted metadata for this package yet. "
@@ -1849,11 +2451,33 @@ def _format_dependency_ui_error(raw: str):
     if "Blocked by CRITICAL findings" in text:
         return "Blocked: there are CRITICAL findings in this project. Resolve those first, then retry this action."
     if "failed compatibility checks and was rolled back" in text:
-        return "Update blocked: compatibility checks failed, so SafeDeps restored the previous version automatically."
+        reason = ""
+        if "Reason:" in text:
+            reason = text.split("Reason:", 1)[1].strip()
+        label = "Uninstall blocked" if " uninstall " in f" {text.lower()} " else "Update blocked"
+        if reason:
+            return (
+                f"{label}: compatibility checks failed, so SafeDeps restored the previous version automatically. "
+                f"Reason: {reason}"
+            )
+        return f"{label}: compatibility checks failed, so SafeDeps restored the previous version automatically."
+    if "failed compatibility checks and rollback also failed" in text:
+        reason = ""
+        if "Reason:" in text:
+            # Keep the first compatibility reason and include the rollback detail after it.
+            reason = text.split("Reason:", 1)[1].strip()
+        label = "Uninstall blocked" if " uninstall " in f" {text.lower()} " else "Update blocked"
+        if reason:
+            return (
+                f"{label}: compatibility checks failed and rollback also failed. "
+                f"Reason: {reason}"
+            )
+        return f"{label}: compatibility checks failed and rollback also failed."
     return text
 
-def _safe_auto_version_pip(root: Path, package: str):
-    code, text = _run_cmd([sys.executable, "-m", "pip", "index", "versions", package], root)
+def _safe_auto_version_pip(root: Path, package: str, runtime_python: str | None = None):
+    runtime_python = runtime_python or _runtime_python_for_system_scope()
+    code, text = _run_cmd([runtime_python, "-m", "pip", "index", "versions", package], root)
     if code != 0:
         raise ValueError(f"pip index versions failed for {package}: {text}")
     line = ""
@@ -1880,9 +2504,10 @@ def _safe_auto_version_npm(root: Path, package: str):
         return data
     raise ValueError(f"Could not resolve latest npm version for {package}.")
 
-def _get_installed_version(root: Path, manager: str, package: str):
+def _get_installed_version(root: Path, manager: str, package: str, runtime_python: str | None = None):
     if manager == "pip":
-        code, text = _run_cmd([sys.executable, "-m", "pip", "show", package], root)
+        runtime_python = runtime_python or _runtime_python_for_system_scope()
+        code, text = _run_cmd([runtime_python, "-m", "pip", "show", package], root)
         if code != 0:
             return ""
         for ln in text.splitlines():
@@ -1904,10 +2529,24 @@ def _get_installed_version(root: Path, manager: str, package: str):
         return ""
     return ""
 
-def _post_change_compat_checks(root: Path, manager: str):
+def _get_pip_required_by(root: Path, package: str, runtime_python: str | None = None):
+    runtime_python = runtime_python or _runtime_python_for_system_scope()
+    code, text = _run_cmd([runtime_python, "-m", "pip", "show", package], root)
+    if code != 0:
+        return []
+    for ln in text.splitlines():
+        if ln.lower().startswith("required-by:"):
+            value = ln.split(":", 1)[1].strip()
+            if not value:
+                return []
+            return sorted({item.strip() for item in value.split(",") if item.strip()})
+    return []
+
+def _post_change_compat_checks(root: Path, manager: str, runtime_python: str | None = None):
     checks = []
     if manager == "pip":
-        checks.append(("pip check", [sys.executable, "-m", "pip", "check"]))
+        runtime_python = runtime_python or _runtime_python_for_system_scope()
+        checks.append(("pip check", [runtime_python, "-m", "pip", "check"]))
     elif manager == "npm":
         checks.append(("npm ls --depth=0", ["npm", "ls", "--depth=0"]))
     failures = []
@@ -1917,12 +2556,13 @@ def _post_change_compat_checks(root: Path, manager: str):
             failures.append(f"{label} failed: {text}")
     return failures
 
-def _rollback_dependency_change(root: Path, manager: str, package: str, previous_version: str):
+def _rollback_dependency_change(root: Path, manager: str, package: str, previous_version: str, runtime_python: str | None = None):
+    runtime_python = runtime_python or _runtime_python_for_system_scope()
     if manager == "pip":
         if previous_version:
-            code, text = _run_cmd([sys.executable, "-m", "pip", "install", f"{package}=={previous_version}"], root)
+            code, text = _run_cmd([runtime_python, "-m", "pip", "install", f"{package}=={previous_version}"], root)
             return code == 0, text
-        code, text = _run_cmd([sys.executable, "-m", "pip", "uninstall", "-y", package], root)
+        code, text = _run_cmd([runtime_python, "-m", "pip", "uninstall", "-y", package], root)
         return code == 0, text
     if manager == "npm":
         if previous_version:
@@ -1956,7 +2596,17 @@ def _evaluate_dependency_risk(root: Path, manager: str, package: str, resolved_v
         warnings.append("Auto mode could not determine a pinned version.")
     return warnings
 
-def apply_dependency_action(root: Path, manager: str, action: str, package: str, version: str, mode: str, approved: bool, approval_note: str):
+def apply_dependency_action(
+    root: Path,
+    manager: str,
+    action: str,
+    package: str,
+    version: str,
+    mode: str,
+    approved: bool,
+    approval_note: str,
+    action_scope: str | None = None,
+):
     if manager not in ("pip", "npm"):
         raise ValueError("Manager must be pip or npm.")
     if action not in ("install", "update", "uninstall"):
@@ -1981,13 +2631,18 @@ def apply_dependency_action(root: Path, manager: str, action: str, package: str,
         raise ValueError("Blocked by CRITICAL findings. Resolve blockers before dependency changes.")
 
     resolved_version = version.strip()
+    runtime_python = _runtime_python_for_action(root, action_scope=action_scope)
     if action in ("install", "update"):
         if mode == "manual":
             if not _is_exact_version(resolved_version):
                 raise ValueError("Manual install/update requires an exact version (example: 1.2.3).")
         else:
             if manager == "pip":
-                resolved_version = _safe_auto_version_pip(root, package)
+                resolved_version = _safe_auto_version_pip(
+                    root,
+                    package,
+                    runtime_python=runtime_python,
+                )
             else:
                 resolved_version = _safe_auto_version_npm(root, package)
 
@@ -1999,15 +2654,28 @@ def apply_dependency_action(root: Path, manager: str, action: str, package: str,
                 f"Risk notes: {joined}. Tick the approval checkbox and add a reason."
             )
 
-    previous_version = _get_installed_version(root, manager, package)
+    previous_version = _get_installed_version(
+        root,
+        manager,
+        package,
+        runtime_python=runtime_python,
+    )
+    if manager == "pip" and action == "uninstall":
+        required_by = _get_pip_required_by(root, package, runtime_python=runtime_python)
+        if required_by:
+            deps = ", ".join(required_by)
+            raise ValueError(
+                f"Uninstall blocked: {package} is required by installed package(s): {deps}. "
+                "Uninstall or update those packages first, then retry."
+            )
 
     if manager == "pip":
         if action == "install":
-            cmd = [sys.executable, "-m", "pip", "install", f"{package}=={resolved_version}"]
+            cmd = [runtime_python, "-m", "pip", "install", f"{package}=={resolved_version}"]
         elif action == "update":
-            cmd = [sys.executable, "-m", "pip", "install", "--upgrade", f"{package}=={resolved_version}"]
+            cmd = [runtime_python, "-m", "pip", "install", "--upgrade", f"{package}=={resolved_version}"]
         else:
-            cmd = [sys.executable, "-m", "pip", "uninstall", "-y", package]
+            cmd = [runtime_python, "-m", "pip", "uninstall", "-y", package]
     else:
         if action == "install":
             cmd = ["npm", "install", f"{package}@{resolved_version}"]
@@ -2016,13 +2684,42 @@ def apply_dependency_action(root: Path, manager: str, action: str, package: str,
         else:
             cmd = ["npm", "uninstall", package]
 
+    logs = []
     code, text = _run_cmd(cmd, root)
+    logs.append(_format_command_output(cmd, code, text))
+    if action == "uninstall" and code == 0:
+        normalized_output = (text or "").lower()
+        if "skipping" in normalized_output and "as it is not installed" in normalized_output:
+            target_scope = action_scope or get_protection_scope(root)
+            raise ValueError(
+                f"{package} is not installed in the selected {target_scope} runtime scope. "
+                f"Command used: {cmd[0]}"
+            )
     if code != 0:
-        raise ValueError(f"{manager} {action} failed: {text}")
+        raise ValueError(f"{manager} {action} failed:\n{_format_command_output(cmd, code, text)}")
 
-    compat_failures = _post_change_compat_checks(root, manager)
+    compat_failures = _post_change_compat_checks(root, manager, runtime_python=runtime_python)
     if compat_failures:
-        ok_rb, rb_text = _rollback_dependency_change(root, manager, package, previous_version)
+        rollback_cmd = []
+        if manager == "pip":
+            if previous_version:
+                rollback_cmd = [runtime_python, "-m", "pip", "install", f"{package}=={previous_version}"]
+            else:
+                rollback_cmd = [runtime_python, "-m", "pip", "uninstall", "-y", package]
+        elif manager == "npm":
+            if previous_version:
+                rollback_cmd = ["npm", "install", f"{package}@{previous_version}"]
+            else:
+                rollback_cmd = ["npm", "uninstall", package]
+        ok_rb, rb_text = _rollback_dependency_change(
+            root,
+            manager,
+            package,
+            previous_version,
+            runtime_python=runtime_python,
+        )
+        if rb_text:
+            logs.append(_format_command_output(rollback_cmd, 0 if ok_rb else 1, rb_text))
         if ok_rb:
             raise ValueError(
                 f"{manager} {action} failed compatibility checks and was rolled back. "
@@ -2047,14 +2744,19 @@ def apply_dependency_action(root: Path, manager: str, action: str, package: str,
     if not post.ok:
         raise ValueError(f"{manager} {action} applied, but post-check found CRITICAL issues. Review findings in UI.")
 
+    if manager == "pip" and resolved_version:
+        logs.append(_format_command_output([runtime_python, "-m", "pip", "show", package], 0, ""))
+    if manager == "npm" and resolved_version:
+        logs.append(_format_command_output(["npm", "ls", package, "--depth=0", "--json"], 0, ""))
     ver_text = f" @{resolved_version}" if resolved_version else ""
     approved_msg = ""
     if action in ("install", "update") and approved:
         approved_msg = " Explicit approval confirmed."
+    logs.append("post-change guard checks passed.")
     return (
         f"{manager} {action} completed for {package}{ver_text}. "
         f"Pre/post CRITICAL checks passed and compatibility checks passed.{approved_msg}"
-    )
+    ), "\n\n".join(logs)
 
 def default_ui_state(scan_path: Path, fail_on: str):
     return {
@@ -2078,6 +2780,7 @@ def default_ui_state(scan_path: Path, fail_on: str):
         "expires": "",
         "vuln_feed_json": "",
         "metadata_cache_json": "",
+        "dependency_output": "",
     }
 
 def _ui_state_from_form(form: dict, scan_path: Path, fail_on: str):
@@ -2182,8 +2885,8 @@ def _is_auto_guard_enabled(root: Path):
 def _set_powershell_autoguard(root: Path, enable: bool):
     return _guard._set_powershell_autoguard(root, enable)
 
-def apply_guard_toggle(root: Path, action: str):
-    return _guard.apply_guard_toggle(root, action)
+def apply_guard_toggle(root: Path, action: str, install_scope: str | None = None):
+    return _guard.apply_guard_toggle(root, action, install_scope=install_scope)
 
 def get_guard_mode_status(root: Path):
     return _guard.get_guard_mode_status(root)
@@ -2384,7 +3087,10 @@ def print_summary(result, fail_on, outdir):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="safedeps", description="Dependency policy gate for safer installs and updates.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub=parser.add_subparsers(dest="cmd", required=True)
+    p_version=sub.add_parser("version", help="Print SafeDeps version")
+    p_version.set_defaults(func=cmd_version)
     p_help=sub.add_parser("help", help="Show quick usage commands for terminal/cmd/powershell")
     p_help.set_defaults(func=cmd_help)
     p_init=sub.add_parser("init", help="Create .safedeps/policy.json")
@@ -2427,6 +3133,7 @@ def main(argv=None):
     p_ui.add_argument("--host", default="127.0.0.1")
     p_ui.add_argument("--port", type=int, default=5200)
     p_ui.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
+    p_ui.add_argument("--install-scope", choices=("auto", "project", "system"), default="auto", help="Override detected SafeDeps install scope for UI testing.")
     p_ui.add_argument("--open-browser", action="store_true", default=True)
     p_ui.add_argument("--no-open-browser", dest="open_browser", action="store_false")
     p_ui.set_defaults(func=cmd_ui)
@@ -2436,9 +3143,12 @@ def main(argv=None):
     p_setup.add_argument("path", nargs="?", default=".")
     p_setup.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
     p_setup.add_argument("--force", action="store_true")
+    p_setup.add_argument("--install-scope", choices=("auto", "project", "system"), default="auto", help="Override detected SafeDeps install scope for guard setup.")
+    p_setup.add_argument("--protection-scope", choices=("auto", "project", "global"), default="auto", help="Set the guard protection scope during setup.")
     p_setup.set_defaults(func=cmd_setup)
     p_guard_cleanup=sub.add_parser("guard-cleanup", help=argparse.SUPPRESS)
     p_guard_cleanup.add_argument("path", nargs="?", default=".")
+    p_guard_cleanup.add_argument("--remove-project-artifacts", action="store_true")
     p_guard_cleanup.set_defaults(func=cmd_guard_cleanup)
     args=parser.parse_args(argv)
     return args.func(args)

@@ -4,16 +4,16 @@ This guide explains the current UI workflow in plain language.
 
 ## Open The UI
 
-Recommended command:
+Recommended command from the project root:
 
 ```bash
-safedeps ui --open-browser
+safedeps ui .
 ```
 
 Behavior:
 
-- SafeDeps creates/uses `~/.safedeps/workspace` automatically when no path is provided.
-- UI files are stored there by default.
+- `safedeps ui .` opens the UI on the current project root.
+- `safedeps ui` opens the current directory when it looks like a project; otherwise it creates/uses `~/.safedeps/workspace`.
 - Default start port is `5200` and SafeDeps auto-tries next local ports if one is blocked.
 - On Windows you can create a desktop launcher with `safedeps ui-shortcut`.
 
@@ -270,3 +270,9 @@ Action button:
 
 - Usually browser extension noise.
 - Try incognito/private mode.
+
+### Text or controls overflow their containers
+
+- This is a known visual issue in the current UI.
+- It can happen with long project paths, package names, dependency messages, or narrow browser widths.
+- The planned UI restyle will replace the current ad hoc layout with a responsive layout system and explicit overflow handling.

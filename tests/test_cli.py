@@ -1,7 +1,28 @@
+import pytest
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
-from safedeps.cli import main, render_ui_page
+import safedeps.cli as cli_mod
+import safedeps.guard as guard_mod
+from safedeps.guard import _filter_guard_path_entries, _strip_autoguard_blocks, _strip_cmd_autorun_blocks
+from safedeps.cli import (
+    main,
+    render_ui_page,
+    render_dependency_table,
+    _resolve_ui_start_path,
+    _is_project_scoped_install,
+    _normalize_project_path,
+    _iter_project_runtime_candidates,
+    _has_project_runtime_candidates,
+    _detect_project_runtime_python,
+    _install_mode,
+    _project_runtime_python,
+    collect_runtime_components,
+    apply_dependency_action,
+)
+from safedeps import __version__
 from safedeps.models import ScanResult, Finding
 from safedeps.scanners import yaml as scanners_yaml
 
@@ -297,6 +318,500 @@ def test_ui_page_renders_findings():
     assert "Use For Approval" in page
 
 
+def test_render_dependency_table_project_scope_excludes_runtime(tmp_path):
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={
+            "components": [
+                {"type": "library", "manager": "npm", "name": "demo-project", "version": "1.0.0", "scope": "dependencies"},
+                {"type": "library", "manager": "pip", "name": "runtime-system", "version": "9.9.9", "scope": "runtime:pip"},
+            ]
+        },
+    )
+    table = render_dependency_table(result, "HIGH", tmp_path, "project", installation_scope="project")
+    assert "Project dependencies" in table
+    assert "Project runtime dependencies" not in table
+    assert "System/runtime dependencies" not in table
+    assert "demo-project" in table
+    assert "runtime-system" not in table
+
+
+def test_detect_project_runtime_python_uses_project_virtual_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "prefix", "/tmp/system-base", raising=False)
+    monkeypatch.setattr(sys, "base_prefix", "/tmp/system", raising=False)
+
+    venv = tmp_path / ".venv" / "bin"
+    venv.mkdir(parents=True)
+    python_path = venv / "python"
+    python_path.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    python_path.chmod(0o755)
+
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    detected = _detect_project_runtime_python(tmp_path)
+    assert detected == str(python_path.resolve())
+
+
+def test_project_runtime_candidates_ignores_external_active_venv(tmp_path, monkeypatch):
+    external_root = tmp_path / "external"
+    external_root.mkdir()
+    external_venv = external_root / "venv" / "bin"
+    external_venv.mkdir(parents=True)
+    external_python = external_venv / "python"
+    external_python.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    external_python.chmod(0o755)
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(external_root / "venv"))
+
+    assert not (tmp_path / ".venv").exists()
+    assert _project_runtime_python(tmp_path) is None
+
+
+def test_collect_runtime_components_timeout_does_not_block_ui(tmp_path, monkeypatch):
+    from safedeps import cli as cli_mod
+
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args=args[0], timeout=kwargs.get("timeout", 0))
+
+    monkeypatch.setattr(cli_mod.subprocess, "run", fake_run)
+
+    assert collect_runtime_components(
+        tmp_path,
+        python_executable="python",
+        runtime_scope="runtime:system",
+        fallback_to_process=False,
+    ) == []
+
+
+def test_project_install_mode_forces_project_only_behavior(tmp_path, monkeypatch):
+    from safedeps import cli as cli_mod
+
+    project_python = tmp_path / ".venv" / "bin" / "python"
+    project_python.parent.mkdir(parents=True)
+    project_python.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    project_python.chmod(0o755)
+    system_python = tmp_path / "system-python"
+    system_python.write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_system_scope", lambda: str(system_python))
+
+    mode = _install_mode(tmp_path, "project")
+
+    assert mode.is_project_install
+    assert not mode.global_scope_available
+    assert mode.action_scope("global", "global") == "project"
+    assert mode.runtime_python_for_action("global") == str(project_python.resolve())
+    assert mode.can_set_guard_action("set_scope_global")[0] is False
+
+
+def test_system_install_mode_keeps_project_and_global_behavior_separate(tmp_path, monkeypatch):
+    from safedeps import cli as cli_mod
+
+    project_python = tmp_path / ".venv" / "bin" / "python"
+    project_python.parent.mkdir(parents=True)
+    project_python.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    project_python.chmod(0o755)
+    system_python = tmp_path / "system-python"
+    system_python.write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_system_scope", lambda: str(system_python))
+
+    mode = _install_mode(tmp_path, "system")
+
+    assert mode.is_system_install
+    assert mode.global_scope_available
+    assert mode.action_scope("project", "global") == "project"
+    assert mode.action_scope("global", "project") == "system"
+    assert mode.runtime_python_for_action("project") == str(project_python.resolve())
+    assert mode.runtime_python_for_action("global") == str(system_python)
+    assert mode.can_set_guard_action("set_scope_global")[0] is True
+
+
+def test_guard_toggle_allows_global_when_install_scope_is_system(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / ".venv"))
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path / "base"))
+
+    msg = cli_mod.apply_guard_toggle(tmp_path, "set_scope_global", install_scope="system")
+    saved = json.loads((tmp_path / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+
+    assert "GLOBAL" in msg
+    assert saved["auto_guard"] is False
+    assert saved["protection_scope"] == "global"
+
+
+def test_guard_toggle_forces_project_when_install_scope_is_project(tmp_path):
+    msg = cli_mod.apply_guard_toggle(tmp_path, "set_scope_global", install_scope="project")
+    saved = json.loads((tmp_path / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+
+    assert "not available" in msg
+    assert saved["auto_guard"] is False
+    assert saved["protection_scope"] == "project"
+
+
+def test_ui_render_install_scope_system_keeps_global_toggle_enabled(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / ".venv"))
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path / "base"))
+
+    page = render_ui_page(tmp_path, "HIGH", install_scope="system")
+    global_button = re.search(r'<button[^>]+value="set_scope_global"[^>]*>', page)
+
+    assert global_button
+    assert "disabled" not in global_button.group(0)
+    assert "Global scope is locked" not in page
+
+
+def test_render_dependency_table_system_scope_shows_project_runtime_if_detected(tmp_path, monkeypatch):
+    from safedeps import cli as cli_mod
+
+    venv = tmp_path / ".venv-test" / "bin"
+    venv.mkdir(parents=True)
+    python_path = venv / "python"
+    python_path.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    python_path.chmod(0o755)
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\nversion='0.1.0'\n", encoding="utf-8")
+
+    calls = []
+
+    def fake_collect_runtime_components(root, **kwargs):
+        calls.append(kwargs)
+        runtime_scope = str(kwargs.get("runtime_scope", ""))
+        if runtime_scope.startswith("runtime:project"):
+            return [
+                {"type":"library","manager":"pip","name":"project-runtime","version":"9.9.9","scope":"runtime:project:pip"}
+            ]
+        if runtime_scope.startswith("runtime:system"):
+            return [
+                {"type":"library","manager":"pip","name":"system-runtime","version":"3.11.0","scope":"runtime:system:pip"}
+            ]
+        return []
+
+    monkeypatch.setattr(cli_mod, "collect_runtime_components", fake_collect_runtime_components)
+
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={
+            "components": [
+                {"type": "library", "manager": "pip", "name": "project-dep", "version": "1.0.0", "scope": "dependencies"},
+            ]
+        },
+    )
+    table = render_dependency_table(result, "HIGH", tmp_path, "project", installation_scope="system")
+    assert "Project dependencies" in table
+    assert "Project runtime dependencies" in table
+    assert "System/runtime dependencies" in table
+    assert "project-dep" in table
+    assert "project-runtime" in table
+    assert "system-runtime" in table
+
+
+def test_render_dependency_table_global_scope_splits_sections():
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={
+            "components": [
+                {"type": "library", "manager": "npm", "name": "demo-project", "version": "1.0.0", "scope": "dependencies"},
+                {"type": "library", "manager": "pip", "name": "runtime-system", "version": "9.9.9", "scope": "runtime:pip"},
+            ]
+        },
+    )
+    table = render_dependency_table(result, "HIGH", Path("."), "global", installation_scope="system")
+    assert "Project dependencies" in table
+    assert "System/runtime dependencies" in table
+    assert "demo-project" in table
+    assert "runtime-system" in table
+
+
+def test_render_dependency_table_keeps_separate_runtime_scopes_for_same_package(tmp_path):
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={
+            "components": [
+                {
+                    "type": "library",
+                    "manager": "pip",
+                    "name": "colorama",
+                    "version": "0.4.6",
+                    "scope": "runtime:project:pip",
+                },
+                {
+                    "type": "library",
+                    "manager": "pip",
+                    "name": "colorama",
+                    "version": "0.4.5",
+                    "scope": "runtime:system:pip",
+                },
+            ]
+        },
+    )
+
+    table = render_dependency_table(result, "HIGH", tmp_path, "project", installation_scope="system")
+    assert "data-scope=\"runtime:project:pip\"" in table
+    assert "data-scope=\"runtime:system:pip\"" in table
+    assert "data-runtime-scope=\"project\"" in table
+    assert "data-runtime-scope=\"system\"" in table
+    assert table.count("data-package=\"colorama\"") >= 2
+
+
+def test_render_dependency_table_project_install_merges_declared_and_installed_versions(tmp_path):
+    result = ScanResult(
+        ok=False,
+        findings=[
+            Finding(
+                severity="HIGH",
+                manager="pip",
+                rule="UNPINNED_VERSION",
+                message="Unpinned pip dependency: pytest>=8.0",
+                package="pytest",
+                file="pyproject.toml",
+            )
+        ],
+        sbom={
+            "components": [
+                {
+                    "type": "library",
+                    "manager": "pip",
+                    "name": "pytest",
+                    "version": ">=8.0",
+                    "scope": "dependencies",
+                },
+                {
+                    "type": "library",
+                    "manager": "pip",
+                    "name": "pytest",
+                    "version": "9.0.3",
+                    "scope": "runtime:project:pip",
+                },
+            ]
+        },
+    )
+
+    table = render_dependency_table(result, "HIGH", tmp_path, "project", installation_scope="project")
+
+    assert table.count("data-package=\"pytest\"") == 1
+    assert "<th>Declared</th><th>Installed</th>" in table
+    assert "&gt;=8.0" in table
+    assert "9.0.3" in table
+    assert "UNPINNED_VERSION" in table
+
+
+def test_apply_dependency_action_targets_project_runtime_when_scope_passed(monkeypatch, tmp_path):
+    project_python = tmp_path / "project_py.exe"
+    project_python.write_text("", encoding="utf-8")
+    system_python = tmp_path / "system_py.exe"
+    system_python.write_text("", encoding="utf-8")
+
+    def fake_scan_pipeline(root, policy_arg, out, fail_on, online_audit, sarif, cyclonedx, spdx, html):
+        outdir = root / out
+        outdir.mkdir(parents=True, exist_ok=True)
+        return ScanResult(ok=True, findings=[], sbom={"components": []}), outdir
+
+    calls = []
+
+    def fake_run_cmd(args, cwd):
+        calls.append(args)
+        return 0, ""
+
+    monkeypatch.setattr(cli_mod, "run_scan_pipeline", fake_scan_pipeline)
+    monkeypatch.setattr(cli_mod, "_run_cmd", fake_run_cmd)
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_project_scope", lambda root: str(project_python))
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_system_scope", lambda: str(system_python))
+
+    apply_dependency_action(
+        root=tmp_path,
+        manager="pip",
+        action="uninstall",
+        package="colorama",
+        version="",
+        mode="manual",
+        approved=False,
+        approval_note="",
+        action_scope="project",
+    )
+
+    assert calls, calls
+    assert any(call[0] == str(project_python) and call[1:4] == ["-m", "pip", "uninstall"] for call in calls)
+
+
+def test_apply_dependency_action_uninstall_blocks_required_pip_package(monkeypatch, tmp_path):
+    project_python = tmp_path / "project_py.exe"
+    project_python.write_text("", encoding="utf-8")
+
+    def fake_scan_pipeline(root, policy_arg, out, fail_on, online_audit, sarif, cyclonedx, spdx, html):
+        outdir = root / out
+        outdir.mkdir(parents=True, exist_ok=True)
+        return ScanResult(ok=True, findings=[], sbom={"components": []}), outdir
+
+    calls = []
+
+    def fake_run_cmd(args, cwd):
+        calls.append(args)
+        cmd = " ".join(str(x) for x in args)
+        if "-m pip show colorama" in cmd:
+            return 0, "Name: colorama\nVersion: 0.4.6\nRequired-by: pytest"
+        return 0, ""
+
+    monkeypatch.setattr(cli_mod, "run_scan_pipeline", fake_scan_pipeline)
+    monkeypatch.setattr(cli_mod, "_run_cmd", fake_run_cmd)
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_project_scope", lambda root: str(project_python))
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_system_scope", lambda: str(project_python))
+
+    with pytest.raises(ValueError, match="required by installed package"):
+        apply_dependency_action(
+            root=tmp_path,
+            manager="pip",
+            action="uninstall",
+            package="colorama",
+            version="",
+            mode="manual",
+            approved=False,
+            approval_note="",
+            action_scope="project",
+        )
+
+    assert not any(call[1:4] == ["-m", "pip", "uninstall"] for call in calls)
+
+
+def test_apply_dependency_action_uninstall_reports_scope_miss(monkeypatch, tmp_path):
+    project_python = tmp_path / "project_py.exe"
+    project_python.write_text("", encoding="utf-8")
+
+    def fake_scan_pipeline(root, policy_arg, out, fail_on, online_audit, sarif, cyclonedx, spdx, html):
+        outdir = root / out
+        outdir.mkdir(parents=True, exist_ok=True)
+        return ScanResult(ok=True, findings=[], sbom={"components": []}), outdir
+
+    def fake_run_cmd(args, cwd):
+        cmd = " ".join(str(x) for x in args)
+        if "-m pip show colorama" in cmd:
+            return 0, ""
+        return 0, "Skipping colorama as it is not installed."
+
+    monkeypatch.setattr(cli_mod, "run_scan_pipeline", fake_scan_pipeline)
+    monkeypatch.setattr(cli_mod, "_run_cmd", fake_run_cmd)
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_project_scope", lambda root: str(project_python))
+    monkeypatch.setattr(cli_mod, "_runtime_python_for_system_scope", lambda: str(project_python))
+
+    with pytest.raises(ValueError, match="not installed in the selected"):
+        apply_dependency_action(
+            root=tmp_path,
+            manager="pip",
+            action="uninstall",
+            package="colorama",
+            version="",
+            mode="manual",
+            approved=False,
+            approval_note="",
+            action_scope="project",
+        )
+
+
+def test_render_dependency_table_project_scope_includes_runtime_for_venv_install(tmp_path, monkeypatch):
+    from safedeps import cli as cli_mod
+
+    venv = tmp_path / ".venv" / "Scripts"
+    venv.mkdir(parents=True)
+    python_path = venv / "python.exe"
+    python_path.write_text("#!python\n", encoding="utf-8")
+    monkeypatch.setattr(
+        cli_mod,
+        "collect_runtime_components",
+        lambda root, **kwargs: [{"type":"library","manager":"pip","name":"runtime-system","version":"9.9.9","scope":"runtime:project:pip"}],
+    )
+
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={
+            "components": [
+                {"type": "library", "manager": "pip", "name": "project-dep", "version": "1.0.0", "scope": "dependencies"},
+            ]
+        },
+    )
+    table = render_dependency_table(result, "HIGH", tmp_path, "project", installation_scope="project")
+    assert "Project dependencies" in table
+    assert "Project runtime dependencies" not in table
+    assert "System/runtime dependencies" not in table
+    assert "project-dep" in table
+    assert "runtime-system" in table
+
+
+def test_version_commands(capsys):
+    assert main(["version"]) == 0
+    assert __version__ in capsys.readouterr().out
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert __version__ in capsys.readouterr().out
+
+
+def test_ui_start_path_prefers_current_project(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = \"demo\"\nversion = \"0.0.1\"\n", encoding="utf-8")
+    assert _resolve_ui_start_path("") == tmp_path.resolve()
+    assert _resolve_ui_start_path(".") == tmp_path.resolve()
+
+
+def test_ui_start_path_prefers_current_dir_in_project_scoped_install(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert not (tmp_path / "pyproject.toml").exists()
+    monkeypatch.setattr(sys, "base_prefix", "/tmp/fake-system-base")
+    assert _is_project_scoped_install()
+
+
+def test_normalize_project_path_keeps_project_root(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\nversion='1.0.0'\n", encoding="utf-8")
+    assert _normalize_project_path(tmp_path) == tmp_path
+
+
+def test_normalize_project_path_moves_from_venv_to_parent(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\nversion='1.0.0'\n", encoding="utf-8")
+    venv_dir = tmp_path / ".venv-test"
+    venv_dir.mkdir()
+    assert _normalize_project_path(venv_dir) == tmp_path
+    assert _resolve_ui_start_path("") == tmp_path.resolve()
+
+
+def test_ui_start_path_falls_back_to_workspace_outside_project(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    cwd = tmp_path / "empty"
+    home.mkdir()
+    cwd.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.chdir(cwd)
+    assert _resolve_ui_start_path("") == (home / ".safedeps" / "workspace").resolve()
+
+
+def test_setup_forces_project_scope_for_venv_install(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    root.mkdir()
+    state = root / ".safedeps" / "guard-state.json"
+    state.parent.mkdir()
+    state.write_text(
+        json.dumps(
+            {
+                "protection_scope": "global",
+                "project_root": str(tmp_path),
+                "auto_guard_powershell": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(sys, "prefix", str(root / ".venv"))
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path / "python-base"))
+
+    code = main(["setup", str(root)])
+    assert code == 0
+    saved = json.loads((root / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+    assert saved["auto_guard"] is False
+    assert saved["protection_scope"] == "project"
+    assert saved["project_root"] == str(root)
+
+
 def test_yarn_lock_denylist_fails(tmp_path):
     (tmp_path / "yarn.lock").write_text(
         """
@@ -585,6 +1100,120 @@ def test_package_age_signal_reports_medium_from_metadata_cache(tmp_path):
     )
     code = main(["scan", str(tmp_path), "--out", ".tmp-security", "--fail-on", "HIGH"])
     assert code == 0
+
+
+def test_filter_guard_path_entries_removes_other_safedeps_paths():
+    entries = [
+        r"C:\\Python311\\Scripts",
+        r"R:\\CodesAndTips\\CodesAndTips\\dotNET\\SafeDeps\\safedeps-Latest\\.safedeps\\bin",
+        r"C:\\Tools",
+        r"D:\\other\\project\\.safedeps\\bin",
+        r"C:\\Python311\\Scripts",
+    ]
+    keep = r"R:\\CodesAndTips\\CodesAndTips\\dotNET\\SafeDeps\\safedeps-Latest\\.safedeps\\bin"
+    filtered = _filter_guard_path_entries(entries, keep)
+    assert filtered == [
+        r"C:\\Python311\\Scripts",
+        r"R:\\CodesAndTips\\CodesAndTips\\dotNET\\SafeDeps\\safedeps-Latest\\.safedeps\\bin",
+        r"C:\\Tools",
+    ]
+
+
+def test_strip_autoguard_blocks_removes_multiple_markers():
+    text = "\n".join(
+        [
+            "line-a",
+            "# >>> SafeDeps Auto Guard >>>",
+            "if (...) { ... }",
+            "# <<< SafeDeps Auto Guard <<<",
+            "line-b",
+            "# >>> SafeDeps Auto Guard >>>",
+            "if (...) { ... }",
+            "# <<< SafeDeps Auto Guard <<<",
+            "line-c",
+        ]
+    )
+    cleaned = _strip_autoguard_blocks(text)
+    assert "SafeDeps Auto Guard" not in cleaned
+    assert "line-a" in cleaned
+    assert "line-b" in cleaned
+    assert "line-c" in cleaned
+
+
+def test_strip_cmd_autorun_blocks_preserves_existing_commands():
+    text = (
+        'doskey ll=dir & if "SafeDeps Auto Guard"=="SafeDeps Auto Guard" '
+        'if exist "C:\\project\\.safedeps\\activate.bat" call "C:\\project\\.safedeps\\activate.bat" & '
+        'echo ready'
+    )
+    cleaned = _strip_cmd_autorun_blocks(text)
+
+    assert "SafeDeps Auto Guard" not in cleaned
+    assert ".safedeps" not in cleaned
+    assert "doskey ll=dir" in cleaned
+    assert "echo ready" in cleaned
+
+
+def test_strip_cmd_autorun_blocks_removes_legacy_rem_hook():
+    text = (
+        'doskey ll=dir & rem >>> SafeDeps Auto Guard >>> & '
+        'if exist "C:\\project\\.safedeps\\activate.bat" call "C:\\project\\.safedeps\\activate.bat" & '
+        'rem <<< SafeDeps Auto Guard <<< & echo ready'
+    )
+    cleaned = _strip_cmd_autorun_blocks(text)
+
+    assert "SafeDeps Auto Guard" not in cleaned
+    assert ".safedeps" not in cleaned
+    assert "doskey ll=dir" in cleaned
+    assert "echo ready" in cleaned
+
+
+def test_cleanup_guard_install_disables_auto_guard(monkeypatch, tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    guard_mod._write_guard_state(
+        tmp_path,
+        {"auto_guard": True, "auto_guard_powershell": True, "protection_scope": "global", "project_root": str(tmp_path)},
+    )
+
+    def fake_set_autoguard(root, enable):
+        state = guard_mod._load_guard_state(root)
+        state["auto_guard"] = enable
+        state["auto_guard_powershell"] = enable
+        guard_mod._write_guard_state(root, state)
+
+    monkeypatch.setattr(guard_mod, "_set_user_path_guard_entry", lambda root, enable: True)
+    monkeypatch.setattr(guard_mod, "_set_powershell_autoguard", fake_set_autoguard)
+    monkeypatch.setattr(guard_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
+
+    guard_mod.cleanup_guard_install(tmp_path)
+
+    state = guard_mod._load_guard_state(tmp_path)
+    assert state["auto_guard"] is False
+    assert state["auto_guard_powershell"] is False
+
+
+def test_cleanup_guard_install_can_preserve_auto_guard_for_setup(monkeypatch, tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    guard_mod._write_guard_state(
+        tmp_path,
+        {"auto_guard": True, "auto_guard_powershell": True, "protection_scope": "global", "project_root": str(tmp_path)},
+    )
+
+    def fake_set_autoguard(root, enable):
+        state = guard_mod._load_guard_state(root)
+        state["auto_guard"] = enable
+        state["auto_guard_powershell"] = enable
+        guard_mod._write_guard_state(root, state)
+
+    monkeypatch.setattr(guard_mod, "_set_user_path_guard_entry", lambda root, enable: True)
+    monkeypatch.setattr(guard_mod, "_set_powershell_autoguard", fake_set_autoguard)
+    monkeypatch.setattr(guard_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
+
+    guard_mod.cleanup_guard_install(tmp_path, disable_auto_guard=False)
+
+    state = guard_mod._load_guard_state(tmp_path)
+    assert state["auto_guard"] is True
+    assert state["auto_guard_powershell"] is True
 
 
 def test_publisher_churn_signal_reports_medium_from_metadata_cache(tmp_path):
@@ -1149,3 +1778,113 @@ def test_scan_bad_project_fixture_snapshot(capsys):
     expected = Path("tests/golden/scan_bad_project_snapshot.txt").read_text(encoding="utf-8")
     for expected_line in expected.splitlines():
         assert expected_line in normalized
+
+
+def test_setup_generates_strict_project_guard_wrappers(tmp_path):
+    code = main(["setup", str(tmp_path)])
+    assert code == 0
+
+    state = json.loads((tmp_path / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+    assert state["auto_guard"] is False
+    assert state["project_root"] == str(tmp_path)
+
+    for rel in (".safedeps/bin/pip", ".safedeps/bin/python", ".safedeps/bin/npm", ".safedeps/activate.sh"):
+        raw = (tmp_path / rel).read_bytes()
+        assert b"\r\n" not in raw
+
+    pip_wrapper = (tmp_path / ".safedeps" / "bin" / "pip").read_text(encoding="utf-8")
+    python_wrapper = (tmp_path / ".safedeps" / "bin" / "python").read_text(encoding="utf-8")
+    npm_wrapper = (tmp_path / ".safedeps" / "bin" / "npm").read_text(encoding="utf-8")
+    pip_ps1 = (tmp_path / ".safedeps" / "bin" / "pip.ps1").read_text(encoding="utf-8")
+    python_ps1 = (tmp_path / ".safedeps" / "bin" / "python.ps1").read_text(encoding="utf-8")
+    npm_ps1 = (tmp_path / ".safedeps" / "bin" / "npm.ps1").read_text(encoding="utf-8")
+    python_cmd = (tmp_path / ".safedeps" / "bin" / "python.cmd").read_text(encoding="utf-8")
+    npm_cmd = (tmp_path / ".safedeps" / "bin" / "npm.cmd").read_text(encoding="utf-8")
+    pip_cmd = (tmp_path / ".safedeps" / "bin" / "pip.cmd").read_text(encoding="utf-8")
+    activate_bat = (tmp_path / ".safedeps" / "activate.bat").read_text(encoding="utf-8")
+    assert 'if [ -z "${VIRTUAL_ENV:-}" ]' not in pip_wrapper
+    assert 'if [ -z "${VIRTUAL_ENV:-}" ]' not in python_wrapper
+    assert "Blocked: pip uninstall is disabled while SafeDeps guard is active." in pip_wrapper
+    assert "Blocked: pip uninstall is disabled while SafeDeps guard is active." in pip_ps1
+    assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_wrapper
+    assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_ps1
+    assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_cmd
+    assert "setlocal EnableExtensions EnableDelayedExpansion" in pip_cmd
+    assert "setlocal EnableExtensions EnableDelayedExpansion" in python_cmd
+    assert 'set "_real_python=' in pip_cmd
+    assert 'set "_real_python=' in python_cmd
+    assert 'call "!_real_python!" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' in pip_cmd
+    assert 'call "!_real_python!" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' in python_cmd
+    assert '" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' not in pip_cmd
+    assert '" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' not in python_cmd
+    assert "SafeDeps guard wrapper is active, but SafeDeps is not importable" in pip_cmd
+    assert "SafeDeps guard wrapper is active, but SafeDeps is not importable" in python_cmd
+    assert "[SafeDeps CMD debug] wrapper=pip.cmd" in pip_cmd
+    assert "[SafeDeps CMD debug] wrapper=python.cmd" in python_cmd
+    assert "get('protection_scope', 'project')" in pip_cmd
+    assert "get('protection_scope', 'project')" in python_cmd
+    assert 'findstr /I /C:"\\"protection_scope\\": \\"global\\""' not in pip_cmd
+    assert 'findstr /I /C:"\\"protection_scope\\": \\"global\\""' not in python_cmd
+    assert 'if /I not "!_scope!"=="global"' in pip_cmd
+    assert 'if /I not "!_scope!"=="global"' in python_cmd
+    assert 'if /I "%_scope%"=="global" (\n      "' not in pip_cmd
+    assert 'if /I "%_scope%"=="global" (\n        "' not in python_cmd
+    assert 'if ($scope -eq "global") {\n      & "' not in pip_ps1
+    assert 'and $scope -eq "global") {' not in python_ps1
+    assert "normCurVenv = ($curVenv).Replace([char]92, '/')" in pip_ps1
+    assert "normCurVenv = ($curVenv).Replace([char]92, '/')" in python_ps1
+    assert "normCurVenv = ($curVenv).Replace([char]92, '/')" in npm_ps1
+    assert "_expected_venv_norm=!_expected_venv:\\=/!" in pip_cmd
+    assert "_expected_venv_norm=!_expected_venv:\\=/!" in python_cmd
+    assert "_expected_venv_norm=!_expected_venv:\\=/!" in npm_cmd
+    assert 'set "PATH=%safeDepsBin%;%PATH%"' in activate_bat
+    assert "SafeDeps pip guard active for this CMD session." in activate_bat
+    assert 'REAL_PY="' in npm_wrapper
+    assert 'scope="global"' in npm_wrapper
+
+
+def test_setup_windows_keeps_cmd_bin_free_of_extensionless_wrappers(monkeypatch, tmp_path):
+    monkeypatch.setattr(guard_mod, "_is_windows", lambda: True)
+    monkeypatch.setattr(guard_mod, "_force_autoguard_resync", lambda root, target_enabled: None)
+
+    stale_bin = tmp_path / ".safedeps" / "bin"
+    stale_bin.mkdir(parents=True)
+    for name in ("pip", "pip3", "python", "python3", "npm"):
+        (stale_bin / name).write_text("stale", encoding="utf-8")
+
+    code = main(["setup", str(tmp_path), "--install-scope", "system"])
+
+    assert code == 0
+    state = json.loads((tmp_path / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+    assert state["protection_scope"] == "global"
+    assert (tmp_path / ".safedeps" / "bin" / "pip.cmd").exists()
+    assert (tmp_path / ".safedeps" / "bin" / "python.cmd").exists()
+    assert (tmp_path / ".safedeps" / "bin-posix" / "pip").exists()
+    assert (tmp_path / ".safedeps" / "bin-posix" / "python").exists()
+    for name in ("pip", "pip3", "python", "python3", "npm"):
+        assert not (tmp_path / ".safedeps" / "bin" / name).exists()
+
+
+def test_setup_system_can_preserve_project_protection_scope(tmp_path):
+    code = main(["setup", str(tmp_path), "--install-scope", "system", "--protection-scope", "project"])
+
+    assert code == 0
+    state = json.loads((tmp_path / ".safedeps" / "guard-state.json").read_text(encoding="utf-8"))
+    assert state["protection_scope"] == "project"
+
+
+def test_format_dependency_ui_error_exposes_compatibility_reason():
+    raw = "pip uninstall failed: foo\n" \
+          "pip uninstall failed compatibility checks and was rolled back. Reason: pip check found missing dependency pytest>=8.0.0"
+    out = cli_mod._format_dependency_ui_error(raw)
+    assert "Uninstall blocked" in out
+    assert "compatibility checks failed" in out
+    assert "pip check found missing dependency pytest>=8.0.0" in out
+
+
+def test_format_dependency_ui_error_compatibility_rollback_reason():
+    raw = "pip uninstall failed compatibility checks and rollback also failed. Reason: pip check failed: broken marker"
+    out = cli_mod._format_dependency_ui_error(raw)
+    assert "Uninstall blocked" in out
+    assert "rollback also failed" in out
+    assert "pip check failed: broken marker" in out

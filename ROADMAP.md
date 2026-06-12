@@ -45,15 +45,49 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
 - Evaluate bulk safe update flow (batch mode) with strict pre/post checks.
 - Evaluate staged uninstall workflow with impact preview before confirmation.
 
-## Track C - Security Features (Candidate)
+### B3. Dependency Repair And Safe Restore (Candidate)
 
-### C1. Stronger Trust Signals
+- Add a guided repair flow for missing runtime dependencies required by already installed packages.
+- Detect cases like `pytest` requiring `colorama` and offer a safe restore instead of leaving the environment broken.
+- Show dependency impact before repair/uninstall:
+  - package to remove or restore
+  - packages that require it
+  - exact runtime scope affected (`project` or `global`)
+- Add strict loop protection:
+  - maximum dependency expansion depth
+  - maximum number of packages per repair operation
+  - explicit user confirmation before applying transitive repairs
+- Keep repair operations guarded by pre/post compatibility checks (`pip check`, equivalent npm/.NET checks where available).
+
+## Track C - UI Redesign And Visual System
+
+### C1. Full UI Restyle
+
+- Redesign the local web UI as a full product surface, not only incremental guard-flow fixes.
+- Define a consistent layout system for:
+  - header/status area
+  - guard controls
+  - project/system dependency tables
+  - dependency action states
+  - scan findings and policy forms
+- Replace ad hoc spacing and table sizing with responsive rules that prevent long text, package names, paths, and error messages from overflowing their containers.
+- Add visual QA checks for common desktop widths and smaller browser windows.
+
+### C2. Interaction Polish
+
+- Improve collapsible sections for large dependency inventories and future multi-project views.
+- Add clearer empty/loading/error states for project runtime dependencies and system runtime dependencies.
+- Keep guard setup/test actions visible without making advanced policy controls dominate the screen.
+
+## Track D - Security Features (Candidate)
+
+### D1. Stronger Trust Signals
 
 - Add optional package-age policy defaults by manager.
 - Add optional maintainer/publisher risk heuristics with explainable output.
 - Improve suspicious package pattern detection and confidence scoring.
 
-### C2. Policy And Exception Governance
+### D2. Policy And Exception Governance
 
 - Add stronger exception lifecycle controls:
   - mandatory reason format
@@ -61,20 +95,20 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
   - audit trail metadata
 - Add optional policy presets (`strict`, `balanced`, `learning`).
 
-### C3. Supply-Chain Verification (Research)
+### D3. Supply-Chain Verification (Research)
 
 - Evaluate signature/provenance verification options where ecosystem supports it.
 - Evaluate checksum enforcement workflow for approved dependency sources.
 
-## Track D - Documentation And Adoption
+## Track E - Documentation And Adoption
 
-### D1. User Docs
+### E1. User Docs
 
 - Keep README and UI docs synchronized with actual behavior each release.
 - Add "UI action -> equivalent CLI command" mapping table.
 - Add troubleshooting decision tree for common shell/wrapper issues.
 
-### D2. Release Quality Gates
+### E2. Release Quality Gates
 
 - Define minimum validation checklist required before PyPI/npm/NuGet publish.
 - Enforce release checklist in CI for version alignment + smoke tests.
@@ -90,11 +124,12 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
 ### Milestone 2
 
 - Improve guided dependency actions UX and denial explanations.
+- Start full UI restyle work, prioritizing layout consistency and overflow fixes.
 - Add regression tests for all critical runtime guard scenarios.
 
 ### Milestone 3
 
-- Introduce selected candidate security features from Track C after feasibility review.
+- Introduce selected candidate security features from Track D after feasibility review.
 
 ## Notes
 
