@@ -247,6 +247,24 @@ exit $LASTEXITCODE
     """
     pip3_ps1 = pip_ps1
     official_repo_cmd = official_repo.replace('"', '')
+    if official_repo_cmd:
+        cmd_safe_update_check = f"""      echo !_sdargs! | findstr /I /C:"{official_repo_cmd}" >nul
+      if errorlevel 1 (
+        echo Blocked: SafeDeps updates are allowed only from official Git source.
+        echo Allowed source: {official_repo_cmd}
+        exit /b 2
+      )"""
+        py_cmd_safe_update_check = f"""          echo !_sdargs! | findstr /I /C:"{official_repo_cmd}" >nul
+          if errorlevel 1 (
+            echo Blocked: SafeDeps updates are allowed only from official Git source.
+            echo Allowed source: {official_repo_cmd}
+            exit /b 2
+          )"""
+    else:
+        cmd_safe_update_check = """      echo Blocked: SafeDeps updates are allowed only from official Git source.
+      exit /b 2"""
+        py_cmd_safe_update_check = """          echo Blocked: SafeDeps updates are allowed only from official Git source.
+          exit /b 2"""
     pip_cmd = f"""@echo off
 setlocal EnableExtensions EnableDelayedExpansion
 set "_real_python={real_python}"
@@ -321,17 +339,7 @@ if /I "!_should_guard!"=="1" (
     set "_sdargs=%*"
     echo !_sdargs! | findstr /I /R "\\<safedeps\\>" >nul
     if not errorlevel 1 (
-      if "{official_repo_cmd}"=="" (
-        echo Blocked: SafeDeps updates are allowed only from official Git source.
-        exit /b 2
-      ) else (
-        echo !_sdargs! | findstr /I /C:"{official_repo_cmd}" >nul
-        if errorlevel 1 (
-          echo Blocked: SafeDeps updates are allowed only from official Git source.
-          echo Allowed source: {official_repo_cmd}
-          exit /b 2
-        )
-      )
+{cmd_safe_update_check}
     )
     call "!_real_python!" -m safedeps.cli scan . --fail-on {fail_on}
     if errorlevel 1 (
@@ -790,17 +798,7 @@ if "!_should_guard!"=="1" (
         set "_sdargs=%*"
         echo !_sdargs! | findstr /I /R "\\<safedeps\\>" >nul
         if not errorlevel 1 (
-          if "{official_repo_cmd}"=="" (
-            echo Blocked: SafeDeps updates are allowed only from official Git source.
-            exit /b 2
-          ) else (
-            echo !_sdargs! | findstr /I /C:"{official_repo_cmd}" >nul
-            if errorlevel 1 (
-              echo Blocked: SafeDeps updates are allowed only from official Git source.
-              echo Allowed source: {official_repo_cmd}
-              exit /b 2
-            )
-          )
+{py_cmd_safe_update_check}
         )
       )
       call "!_real_python!" -m safedeps.cli scan . --fail-on {fail_on}

@@ -1823,6 +1823,10 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path):
     assert "[SafeDeps CMD debug] wrapper=python.cmd" in python_cmd
     assert "get('protection_scope', 'project')" in pip_cmd
     assert "get('protection_scope', 'project')" in python_cmd
+    assert 'if ""==""' not in pip_cmd
+    assert 'if ""==""' not in python_cmd
+    assert '/C:""' not in pip_cmd
+    assert '/C:""' not in python_cmd
     assert 'findstr /I /C:"\\"protection_scope\\": \\"global\\""' not in pip_cmd
     assert 'findstr /I /C:"\\"protection_scope\\": \\"global\\""' not in python_cmd
     assert 'if /I not "!_scope!"=="global"' in pip_cmd
