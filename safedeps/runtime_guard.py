@@ -89,6 +89,8 @@ def _block(message: str) -> None:
 
 
 def _guard_applies(root: Path, expected_venv: str, state: dict) -> bool:
+    if not bool(state.get("auto_guard", state.get("auto_guard_powershell", False))):
+        return False
     scope = str(state.get("protection_scope") or "project").lower()
     project_root = Path(str(state.get("project_root") or root)).resolve()
     if scope != "global" and not _is_subpath(Path.cwd(), project_root):

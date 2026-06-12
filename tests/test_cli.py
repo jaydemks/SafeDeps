@@ -1250,6 +1250,19 @@ def test_runtime_guard_allows_out_of_scope_project_direct_python_m_pip(monkeypat
     runtime_guard_mod.run(str(project))
 
 
+def test_runtime_guard_allows_direct_python_when_auto_guard_off(monkeypatch, tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    guard_mod._write_guard_state(
+        tmp_path,
+        {"auto_guard": False, "auto_guard_powershell": False, "protection_scope": "global", "project_root": str(tmp_path)},
+    )
+    monkeypatch.setattr(sys, "argv", ["-m", "install", "six"])
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard_mod, "_block", lambda message: (_ for _ in ()).throw(RuntimeError(message)))
+
+    runtime_guard_mod.run(str(tmp_path))
+
+
 def test_runtime_guard_pth_line_targets_project_and_interpreter():
     line = guard_mod._runtime_guard_pth_line(Path("C:/demo"), "C:/demo/.venv", "https://github.com/jaydemks/SafeDeps.git")
 
