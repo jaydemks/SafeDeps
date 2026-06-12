@@ -78,7 +78,8 @@ Workflow: `.github/workflows/release-template.yml`
   - release checksum manifest generation
   - no registry publication
 - `publish=true`:
-  - PyPI publish via OIDC trusted publishing
+  - PyPI publish via `PYPI_API_TOKEN` when configured
+  - PyPI upload runs with verbose logging and `--skip-existing` so reruns can skip already uploaded files
   - npm publish with provenance
   - NuGet publish when `NUGET_API_KEY` secret is configured
 - `push tag vX.Y.Z`:

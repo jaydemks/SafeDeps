@@ -62,6 +62,9 @@ Guard hardening release focused on making `Project` and `Global` protection sema
   - README now documents CMD activation via `.safedeps\activate.bat` and how to verify that CMD resolves SafeDeps `.cmd` wrappers first.
   - README now includes explicit safe uninstall flows for project `.venv` installs and system installs across PowerShell, CMD, and Bash.
   - Reset tooling now removes SafeDeps CMD `AutoRun` hooks as well as PowerShell profile hooks and PATH entries.
+- Release workflow:
+  - PyPI upload now runs with verbose logging.
+  - PyPI upload now uses `--skip-existing` so rerunning a release job can skip files that PyPI already accepted in an earlier attempt.
 
 ## Roadmap Follow-up
 
