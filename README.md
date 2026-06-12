@@ -75,7 +75,9 @@ python -m pip install -e .[dev]
 
 Use these commands from the repository root (`safedeps-Latest`) and only one block at a time.
 
-`safedeps setup` is safe to rerun: it clears stale guard hooks/wrappers for PowerShell, CMD, Bash, and PATH, then regenerates them for the selected target. If Auto Guard was already enabled, setup re-syncs it after the new wrappers are written.
+`safedeps setup` is safe to rerun: it clears stale guard hooks/wrappers for PowerShell, CMD, Bash, PATH, and the Python interpreter startup hook, then regenerates them for the selected target. If Auto Guard was already enabled, setup re-syncs it after the new wrappers are written.
+
+SafeDeps also installs an interpreter-level guard hook into the protected Python runtime. This is what blocks direct calls such as `C:\...\python.exe -m pip install six` that bypass shell aliases, PowerShell functions, CMD AutoRun, or PATH wrappers.
 
 ### Windows (PowerShell)
 
@@ -520,6 +522,7 @@ What is cleaned:
 
 - `.safedeps/bin` entries from user/process paths
 - SafeDeps Auto Guard blocks from shell profiles
+- SafeDeps Python interpreter startup hook
 - command wrappers/functions already active in current session
 - `.safedeps` directories under home and optional project path
 
@@ -782,7 +785,7 @@ Useful release checks:
 
 ```bash
 python scripts/check_versions.py
-python scripts/release/preflight.py --expected-version 0.2.10
+python scripts/release/preflight.py --expected-version 0.3.0
 ```
 
 Prepare the next version and release note:

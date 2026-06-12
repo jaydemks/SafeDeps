@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import safedeps.cli as cli_mod
 import safedeps.guard as guard_mod
+import safedeps.runtime_guard as runtime_guard_mod
 from safedeps.guard import _filter_guard_path_entries, _strip_autoguard_blocks, _strip_cmd_autorun_blocks
 from safedeps.cli import (
     main,
@@ -1217,6 +1218,45 @@ def test_cleanup_guard_install_can_preserve_auto_guard_for_setup(monkeypatch, tm
     state = guard_mod._load_guard_state(tmp_path)
     assert state["auto_guard"] is True
     assert state["auto_guard_powershell"] is True
+
+
+def test_runtime_guard_blocks_direct_python_m_pip_unpinned_install(monkeypatch, tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    guard_mod._write_guard_state(
+        tmp_path,
+        {"auto_guard": True, "auto_guard_powershell": True, "protection_scope": "global", "project_root": str(tmp_path)},
+    )
+    monkeypatch.setattr(sys, "argv", ["-m", "install", "six"])
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard_mod, "_block", lambda message: (_ for _ in ()).throw(RuntimeError(message)))
+
+    with pytest.raises(RuntimeError, match="unpinned runtime install"):
+        runtime_guard_mod.run(str(tmp_path))
+
+
+def test_runtime_guard_allows_out_of_scope_project_direct_python_m_pip(monkeypatch, tmp_path):
+    project = tmp_path / "project"
+    outside = tmp_path / "outside"
+    project.mkdir()
+    outside.mkdir()
+    (project / ".safedeps").mkdir()
+    guard_mod._write_guard_state(
+        project,
+        {"auto_guard": True, "auto_guard_powershell": True, "protection_scope": "project", "project_root": str(project)},
+    )
+    monkeypatch.setattr(sys, "argv", ["-m", "install", "six"])
+    monkeypatch.chdir(outside)
+
+    runtime_guard_mod.run(str(project))
+
+
+def test_runtime_guard_pth_line_targets_project_and_interpreter():
+    line = guard_mod._runtime_guard_pth_line(Path("C:/demo"), "C:/demo/.venv", "https://github.com/jaydemks/SafeDeps.git")
+
+    assert "safedeps.runtime_guard" in line
+    assert "C:/demo" in line
+    assert "C:/demo/.venv" in line
+    assert "https://github.com/jaydemks/SafeDeps.git" in line
 
 
 def test_publisher_churn_signal_reports_medium_from_metadata_cache(tmp_path):
