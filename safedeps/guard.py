@@ -1074,19 +1074,19 @@ def _write_cmd_autorun_windows(value: str):
 
 
 def _is_safedeps_bindir_entry(path_entry: str):
-    normalized = str(path_entry).strip().replace("\\", "/").lower()
+    normalized = re.sub(r"/+", "/", str(path_entry).strip().replace("\\", "/").lower())
     return ".safedeps/bin" in normalized
 
 
 def _filter_guard_path_entries(entries: list[str], keep_guard_bin: str | None):
-    keep_norm = str(keep_guard_bin).strip().lower().replace("\\", "/") if keep_guard_bin else None
+    keep_norm = re.sub(r"/+", "/", str(keep_guard_bin).strip().lower().replace("\\", "/")) if keep_guard_bin else None
     filtered = []
     seen = set()
     for raw in entries:
         raw_str = str(raw).strip()
         if not raw_str:
             continue
-        raw_norm = raw_str.lower().replace("\\", "/")
+        raw_norm = re.sub(r"/+", "/", raw_str.lower().replace("\\", "/"))
         if _is_safedeps_bindir_entry(raw_str):
             if keep_norm and raw_norm == keep_norm:
                 if raw_norm in seen:

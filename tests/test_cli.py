@@ -338,7 +338,7 @@ def test_render_dependency_table_project_scope_excludes_runtime(tmp_path):
 
 
 def test_detect_project_runtime_python_uses_project_virtual_env(tmp_path, monkeypatch):
-    monkeypatch.setattr(sys, "prefix", "/tmp/system-base", raising=False)
+    monkeypatch.setattr(sys, "prefix", "/tmp/system", raising=False)
     monkeypatch.setattr(sys, "base_prefix", "/tmp/system", raising=False)
 
     venv = tmp_path / ".venv" / "bin"
@@ -353,6 +353,8 @@ def test_detect_project_runtime_python_uses_project_virtual_env(tmp_path, monkey
 
 
 def test_project_runtime_candidates_ignores_external_active_venv(tmp_path, monkeypatch):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
     external_root = tmp_path / "external"
     external_root.mkdir()
     external_venv = external_root / "venv" / "bin"
@@ -363,8 +365,8 @@ def test_project_runtime_candidates_ignores_external_active_venv(tmp_path, monke
 
     monkeypatch.setenv("VIRTUAL_ENV", str(external_root / "venv"))
 
-    assert not (tmp_path / ".venv").exists()
-    assert _project_runtime_python(tmp_path) is None
+    assert not (project_root / ".venv").exists()
+    assert _project_runtime_python(project_root) is None
 
 
 def test_collect_runtime_components_timeout_does_not_block_ui(tmp_path, monkeypatch):
@@ -766,10 +768,11 @@ def test_normalize_project_path_keeps_project_root(tmp_path):
     assert _normalize_project_path(tmp_path) == tmp_path
 
 
-def test_normalize_project_path_moves_from_venv_to_parent(tmp_path):
+def test_normalize_project_path_moves_from_venv_to_parent(tmp_path, monkeypatch):
     (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\nversion='1.0.0'\n", encoding="utf-8")
     venv_dir = tmp_path / ".venv-test"
     venv_dir.mkdir()
+    monkeypatch.chdir(venv_dir)
     assert _normalize_project_path(venv_dir) == tmp_path
     assert _resolve_ui_start_path("") == tmp_path.resolve()
 
@@ -1815,8 +1818,8 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path):
     assert 'set "_real_python=' in python_cmd
     assert 'call "!_real_python!" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' in pip_cmd
     assert 'call "!_real_python!" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' in python_cmd
-    assert '" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' not in pip_cmd
-    assert '" -c "import safedeps" >nul 2>nul\nif errorlevel 1 (' not in python_cmd
+    assert '("%_real_python%" -c "import safedeps")' not in pip_cmd
+    assert '("%_real_python%" -c "import safedeps")' not in python_cmd
     assert "SafeDeps guard wrapper is active, but SafeDeps is not importable" in pip_cmd
     assert "SafeDeps guard wrapper is active, but SafeDeps is not importable" in python_cmd
     assert "[SafeDeps CMD debug] wrapper=pip.cmd" in pip_cmd
