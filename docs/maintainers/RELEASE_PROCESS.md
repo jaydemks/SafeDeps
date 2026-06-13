@@ -1,8 +1,8 @@
-# Release Process (Template)
+# Maintainer Release Process
 
 ## Scope
 
-This document defines the minimum release process for SafeDeps public distribution.
+This internal maintainer document defines the minimum release process for SafeDeps public distribution. It is not end-user documentation.
 
 ## Preflight
 
@@ -114,3 +114,5 @@ The following versions must match before release:
 Update release notes for every meaningful change before publishing.
 
 Use `scripts/release/bump_version.py` for the first release-note scaffold, then replace TODO items with the concrete fixes, verification commands, and follow-up work.
+
+Keep the active release note in the repository root while it is being prepared. Move already-published historical notes into `release-notes/old/` so the root stays focused on the current release.

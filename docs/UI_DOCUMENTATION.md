@@ -23,10 +23,26 @@ Behavior:
 - Click `Theme` in the top-right corner.
 - The UI remembers your choice in the browser.
 
+## Dashboard Layout
+
+The UI is organized as a single-page dashboard. Navigation does not reload the browser page.
+
+- The left sidebar expands to show icon + section name, or collapses to icon-only mode.
+- The SafeDeps logo is shown in the lower sidebar area.
+- Main pages are `Overview`, `Run Scan`, `Console`, `Exceptions`, `Policy`, and `Intelligence`.
+- `Run Scan` contains the scan form, dependency quick actions, and guided dependency management in one workflow page.
+- Path values wrap inside their panels instead of overflowing.
+- Forms, buttons, toggles, tables, scrollbars, and loading states use the same glass-style visual system.
+- The search field filters visible content inside the active page.
+
 ## Auto Guard + Scope (PowerShell)
 
-At the top of the UI you now have:
+In `Overview` you have compact cards and controls for:
 
+- setup status
+- auto-guard status
+- runtime Python
+- current shell status
 - `Auto ON` / `Auto OFF`
 - `Project` / `Global`
 
@@ -42,26 +58,20 @@ Reinstall/upgrade note:
 - After reinstalling SafeDeps, run `safedeps setup .` once in your target project.
 - The UI now re-checks effective guard hooks and aligns the toggle with real state.
 
-The header cards show:
-
-- setup status
-- auto-guard status
-- current shell guard status
-
 ## Recommended Workflow
 
-1. Click `Setup Project Guard` (first time per project).
-2. In `Run Scan`, keep `Project path` as `.` and `Fail on` as `HIGH`.
+1. Open `Overview` and click `Setup Guard` (first time per project).
+2. Open `Run Scan`, keep `Project path` as `.` and `Fail on` as `HIGH`.
 3. Click `Run Scan`.
-4. Review `Dependency View And Quick Actions`.
-5. Use quick actions or policy editor.
+4. Open `Dependencies` and review quick actions.
+5. Use `Manage`, `Exceptions`, or `Policy` as needed.
 6. Re-run scan to confirm result.
 
 Note:
 
 - By default, repository sample fixtures under `examples/` are excluded from scans via policy (`exclude_paths`) to keep real-project checks cleaner.
 
-## Section 1: Run Scan
+## Run Scan
 
 ### Project path
 
@@ -100,7 +110,7 @@ After click:
 - Findings table appears.
 - Dependency table is populated.
 
-## Section 2: Dependency View And Quick Actions
+## Dependencies
 
 This is the central user-friendly table.
 
@@ -129,7 +139,7 @@ You now see, in the same section:
 
 This was moved here to avoid confusion with advanced findings.
 
-## Section 3: Manage Dependencies (Guided)
+## Manage Dependencies
 
 You can now manage dependencies directly in UI without manual shell commands.
 
@@ -158,14 +168,14 @@ Examples:
 - You install a package with exact version but no local metadata cache:
   - UI may ask for explicit approval before proceeding
 
-## Section 4: Explain Scan Warnings/Errors (Advanced)
+## Exceptions: Explain Scan Warnings/Errors
 
 ### Explain rule
 
 - Enter a rule code, for example `FLOATING_VERSION`.
 - Click `Explain Rule` to see a plain explanation.
 
-## Section 5: Baseline And Exceptions (Advanced)
+## Exceptions: Baseline And Approvals
 
 ### Report path
 
@@ -196,7 +206,7 @@ Fields:
 
 - Saves or updates the approval entry in baseline JSON.
 
-## Section 6: Policy Quick Editor (Advanced)
+## Policy Quick Editor
 
 This section updates policy safely from UI (no manual JSON editing for common tasks).
 
@@ -232,7 +242,7 @@ Result:
 
 - Package is added/removed from `deny_packages`.
 
-## Section 7: Intelligence Settings (Advanced)
+## Intelligence Settings
 
 You can still edit advanced JSON here.
 
@@ -254,11 +264,11 @@ Action button:
 
 - `Use For Approval` fills approval form from that finding.
 
-## Section Collapse Behavior
+## Page And Collapse Behavior
 
-- Sections `1`, `2`, and `3` are primary and always visible.
-- Advanced sections (`4`, `5`, `6`, `7`) are collapsible and start closed by default.
-- Advanced findings table is also collapsible.
+- Primary workflows are separated into sidebar pages instead of one long vertical document.
+- Advanced panels inside a page remain collapsible where that is useful.
+- Advanced findings table is collapsible inside `Dependencies`.
 
 ## Common Issues
 
@@ -274,6 +284,5 @@ Action button:
 
 ### Text or controls overflow their containers
 
-- This is a known visual issue in the current UI.
-- It can happen with long project paths, package names, dependency messages, or narrow browser widths.
-- The planned UI restyle will replace the current ad hoc layout with a responsive layout system and explicit overflow handling.
+- Long project paths, package names, dependency messages, and command output should wrap or scroll inside their panel.
+- If overflow still appears, capture the page name and viewport size before reporting it.

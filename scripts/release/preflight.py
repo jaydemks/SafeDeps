@@ -86,11 +86,18 @@ def main() -> int:
         ROOT / "scripts" / "release" / "create_release_manifest.py",
         ROOT / "packages" / "dotnet-tool" / "SafeDeps.Tool.csproj",
         ROOT / "README.md",
-        ROOT / "RELEASE_NOTES_2026-05-22.md",
     ]
     for p in required_paths:
         if not p.exists():
             errors.append(f"missing required file: {p.relative_to(ROOT)}")
+
+    release_notes = sorted(ROOT.glob("RELEASE_NOTES_*.md"))
+    release_notes = [p for p in release_notes if p.name != "RELEASE_NOTES_TEMPLATE.md"]
+    if not release_notes:
+        errors.append("missing current release note: RELEASE_NOTES_*.md")
+    elif not any(version in p.read_text(encoding="utf-8", errors="ignore") for p in release_notes):
+        note_names = ", ".join(p.name for p in release_notes)
+        errors.append(f"current release note does not mention version {version}: {note_names}")
 
     if not errors:
         print(f"preflight: PASS version={version}")

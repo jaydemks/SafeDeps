@@ -10,6 +10,14 @@ This is useful when developers, scripts, or AI coding agents can add packages to
 
 SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
 
+After installation, configure the guard before relying on protected installs:
+
+```bash
+safedeps setup .
+```
+
+Alternatively, open the local UI with `safedeps ui .` and use the **Setup Guard** button.
+
 ## Quick example
 
 With the guard active, this is blocked:
@@ -71,6 +79,34 @@ cd SafeDeps
 python -m pip install -e .[dev]
 ```
 
+## Choosing the target installation
+
+SafeDeps can be installed in more than one Python at the same time. This is common when you test the published PyPI package globally while developing the local repository inside a project `.venv`.
+
+Use the Python executable explicitly when testing guard scope:
+
+| Target | Use this interpreter | Typical source |
+| --- | --- | --- |
+| Project scope | `.\.venv-test\Scripts\python.exe` or `./.venv-test/bin/python` | local editable repo install |
+| Global scope from PyPI | system Python, for example `py -3` on Windows or `python3` on Linux/macOS | `pip install safedeps` from PyPI |
+| Global scope from repo | system Python, for example `py -3` on Windows or `python3` on Linux/macOS | local editable repo install |
+
+Avoid using bare `python`, `pip`, or `safedeps` while switching targets unless you have just verified what they resolve to.
+
+Verify the active SafeDeps installation:
+
+```bash
+python -c "import pathlib, safedeps, sys; print(sys.executable); print(safedeps.__version__); print(pathlib.Path(safedeps.__file__).resolve())"
+```
+
+On Windows, also check command resolution:
+
+```powershell
+where.exe python
+where.exe pip
+where.exe safedeps
+```
+
 ## Clean reinstall and target switching (repo-local)
 
 Use these commands from the repository root (`safedeps-Latest`) and only one block at a time.
@@ -124,6 +160,13 @@ $SystemPython = py -3 -c "import sys; print(sys.executable)"
 & $SystemPython -m pip install -e .[dev]
 & $SystemPython -m safedeps.cli setup . --install-scope system --protection-scope global
 . .\.safedeps\activate.ps1
+```
+
+For a PyPI/global smoke test instead of a local editable install, replace the reinstall command with:
+
+```powershell
+& $SystemPython -m pip install --upgrade safedeps
+& $SystemPython -m safedeps.cli setup . --install-scope system --protection-scope global
 ```
 
 For CMD after setup:
@@ -184,6 +227,13 @@ SYS_PY="$(command -v python3 || command -v python)"
 source ./.safedeps/activate.sh
 ```
 
+For a PyPI/global smoke test instead of a local editable install, replace the reinstall command with:
+
+```bash
+"$SYS_PY" -m pip install --upgrade safedeps
+"$SYS_PY" -m safedeps.cli setup . --install-scope system --protection-scope global
+```
+
 If you installed only a single command earlier and want to know what target you are touching, verify explicitly:
 
 ```bash
@@ -225,7 +275,7 @@ Expected behavior:
 CMD activation test:
 
 ```bat
-cd /d R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd /d C:\path\to\safedeps-Latest
 .safedeps\activate.bat
 where pip
 where python
@@ -262,16 +312,25 @@ Project virtual environment test:
 
 ```powershell
 .\.venv-test\Scripts\Activate.ps1
+python -c "import pathlib, safedeps, sys; print(sys.executable); print(pathlib.Path(safedeps.__file__).resolve())"
+
+# expected: blocked because the version is not pinned
 python -m pip install six
+
+# expected: allowed if the scan passes, then cleaned up
+python -m pip install six==1.17.0
 python -m pip show six
 python -m pip uninstall -y six
-python -m pip show six
 ```
 
 Explicit project interpreter test:
 
 ```powershell
+# expected: blocked because the version is not pinned
 & .\.venv-test\Scripts\python.exe -m pip install six
+
+# expected: allowed if the scan passes, then cleaned up
+& .\.venv-test\Scripts\python.exe -m pip install six==1.17.0
 & .\.venv-test\Scripts\python.exe -m pip show six
 & .\.venv-test\Scripts\python.exe -m pip uninstall -y six
 ```
@@ -281,7 +340,13 @@ System interpreter test:
 ```powershell
 deactivate
 $SystemPython = py -3 -c "import sys; print(sys.executable)"
+& $SystemPython -c "import pathlib, safedeps, sys; print(sys.executable); print(pathlib.Path(safedeps.__file__).resolve())"
+
+# expected: blocked because the version is not pinned
 & $SystemPython -m pip install six
+
+# expected: allowed if the scan passes, then cleaned up
+& $SystemPython -m pip install six==1.17.0
 & $SystemPython -m pip show six
 & $SystemPython -m pip uninstall -y six
 ```
@@ -289,7 +354,7 @@ $SystemPython = py -3 -c "import sys; print(sys.executable)"
 CMD guarded-session test:
 
 ```bat
-cd /d R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd /d C:\path\to\safedeps-Latest
 .safedeps\activate.bat
 where pip
 where python
@@ -309,7 +374,13 @@ Project virtual environment test:
 
 ```bash
 source ./.venv-test/bin/activate
+python -c "import pathlib, safedeps, sys; print(sys.executable); print(pathlib.Path(safedeps.__file__).resolve())"
+
+# expected: blocked because the version is not pinned
 python -m pip install six
+
+# expected: allowed if the scan passes, then cleaned up
+python -m pip install six==1.17.0
 python -m pip show six
 python -m pip uninstall -y six
 ```
@@ -319,7 +390,13 @@ System interpreter test:
 ```bash
 deactivate || true
 SYS_PY="$(command -v python3 || command -v python)"
+"$SYS_PY" -c "import pathlib, safedeps, sys; print(sys.executable); print(pathlib.Path(safedeps.__file__).resolve())"
+
+# expected: blocked because the version is not pinned
 "$SYS_PY" -m pip install six
+
+# expected: allowed if the scan passes, then cleaned up
+"$SYS_PY" -m pip install six==1.17.0
 "$SYS_PY" -m pip show six
 "$SYS_PY" -m pip uninstall -y six
 ```
@@ -343,7 +420,7 @@ When uninstalling SafeDeps from a guarded shell, SafeDeps tries to run `guard-cl
 Project `.venv` uninstall:
 
 ```powershell
-cd R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd C:\path\to\safedeps-Latest
 & .\.venv-test\Scripts\python.exe -m safedeps.cli guard-cleanup .
 & .\.venv-test\Scripts\python.exe -m pip uninstall -y safedeps
 .\scripts\reset-safedeps.ps1 -ProjectPath (Get-Location)
@@ -352,7 +429,7 @@ cd R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
 System uninstall:
 
 ```powershell
-cd R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd C:\path\to\safedeps-Latest
 $SystemPython = py -3 -c "import sys; print(sys.executable)"
 & $SystemPython -m safedeps.cli guard-cleanup .
 & $SystemPython -m pip uninstall -y safedeps
@@ -366,7 +443,7 @@ After uninstall/reset, open a fresh PowerShell or CMD session.
 Project `.venv` uninstall:
 
 ```bat
-cd /d R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd /d C:\path\to\safedeps-Latest
 .\.venv-test\Scripts\python.exe -m safedeps.cli guard-cleanup .
 .\.venv-test\Scripts\python.exe -m pip uninstall -y safedeps
 scripts\reset-safedeps.bat %CD%
@@ -375,7 +452,7 @@ scripts\reset-safedeps.bat %CD%
 System uninstall:
 
 ```bat
-cd /d R:\CodesAndTips\CodesAndTips\dotNET\SafeDeps\safedeps-Latest
+cd /d C:\path\to\safedeps-Latest
 py -3 -m safedeps.cli guard-cleanup .
 py -3 -m pip uninstall -y safedeps
 scripts\reset-safedeps.bat
@@ -420,17 +497,19 @@ Run setup once inside the project you want to protect.
 
 ### Windows (PowerShell)
 
-Project install:
+Project install from the local development virtual environment:
 
 ```powershell
-python -m safedeps.cli setup . --install-scope project
+$ProjectPython = ".\.venv-test\Scripts\python.exe"
+& $ProjectPython -m safedeps.cli setup . --install-scope project
 . .\.safedeps\activate.ps1
 ```
 
-System install:
+Global/system install:
 
 ```powershell
-python -m safedeps.cli setup . --install-scope system --protection-scope global
+$SystemPython = py -3 -c "import sys; print(sys.executable)"
+& $SystemPython -m safedeps.cli setup . --install-scope system --protection-scope global
 . .\.safedeps\activate.ps1
 ```
 
@@ -442,17 +521,19 @@ CMD activation after either setup:
 
 ### Linux, macOS, and WSL (Bash)
 
-Project install:
+Project install from the local development virtual environment:
 
 ```bash
-safedeps setup . --install-scope project
+PROJECT_PY="./.venv-test/bin/python"
+"$PROJECT_PY" -m safedeps.cli setup . --install-scope project
 source ./.safedeps/activate.sh
 ```
 
-System install:
+Global/system install:
 
 ```bash
-safedeps setup . --install-scope system --protection-scope global
+SYS_PY="$(command -v python3 || command -v python)"
+"$SYS_PY" -m safedeps.cli setup . --install-scope system --protection-scope global
 source ./.safedeps/activate.sh
 ```
 
@@ -465,7 +546,7 @@ On Windows, Auto Guard configures new PowerShell sessions through the PowerShell
 If you get wrapper errors like:
 
 ```text
-R:\...\safedeps\.safedeps\bin\pip.ps1 ... traceback ...
+C:\path\to\project\.safedeps\bin\pip.ps1 ... traceback ...
 ```
 
 run the reset script for your platform.
@@ -779,34 +860,6 @@ Run tests:
 
 ```bash
 python -m pytest
-```
-
-Useful release checks:
-
-```bash
-python scripts/check_versions.py
-python scripts/release/preflight.py --expected-version 0.3.2
-```
-
-Prepare the next version and release note:
-
-```bash
-python scripts/release/bump_version.py patch --note "Short release change summary"
-python scripts/release/bump_version.py minor --note "Short release change summary"
-python scripts/release/bump_version.py 0.3.0 --note "Short release change summary"
-```
-
-Version numbers should stay aligned across:
-
-- `pyproject.toml`
-- `safedeps/__init__.py`
-- `packages/npm-wrapper/package.json`
-- `packages/dotnet-tool/SafeDeps.Tool.csproj`
-
-Release tags should use:
-
-```text
-vX.Y.Z
 ```
 
 ## Security scope

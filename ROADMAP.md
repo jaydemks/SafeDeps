@@ -12,8 +12,9 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
 
 ### A1. Deep Test Coverage For Not-Yet-Validated Flows
 
-- Expand end-to-end validation for npm runtime guard.
-- Expand end-to-end validation for NuGet/.NET runtime flows.
+- Expand end-to-end validation for npm dependency protection.
+- Expand end-to-end validation for NuGet/.NET dependency protection.
+- Move npm and NuGet protection toward native ecosystem integration instead of relying only on generated wrappers.
 - Add cross-shell validation matrix:
   - PowerShell
   - CMD
@@ -60,6 +61,15 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
 - Keep repair operations guarded by pre/post compatibility checks (`pip check`, equivalent npm/.NET checks where available).
 
 ## Track C - UI Redesign And Visual System
+
+### C0. Codebase Decomposition For UI Work
+
+- Status: substantially completed in `0.3.3`.
+- Split the former monolithic `safedeps/cli.py` entrypoint into focused modules for constants, scan pipeline, reports/exporters, runtime/install scope detection, dependency actions, UI state, UI rendering, UI server transport, doctor checks, and baseline/approval exceptions.
+- Split guard support code into focused modules for interpreter hook installation, guard state/Auto Guard shell integration, and repository-source detection while keeping `safedeps.guard` as the setup facade.
+- Split dependency/finding table rendering and runtime dependency collection out of the main UI page renderer.
+- Keep `safedeps.cli` as a thin command dispatcher and compatibility facade for existing tests/imports.
+- Remaining refinement: move the large bash/PowerShell/CMD wrapper templates out of `guard.py`, and continue breaking down `ui_render.py` into smaller view/template helpers as the visual redesign progresses.
 
 ### C1. Full UI Restyle
 
@@ -117,8 +127,9 @@ This roadmap tracks the next practical milestones after the recent runtime-guard
 
 ### Milestone 1 (Next)
 
-- Complete npm and NuGet deep validation.
-- Stabilize any remaining wrapper edge cases.
+- Start npm and NuGet native protection work, using the Python-side guard as the reference quality bar.
+- Complete npm and NuGet deep validation around the current wrapper-based behavior before replacing or reducing it.
+- Stabilize any remaining wrapper edge cases that still affect 0.3.3 users.
 - Publish updated docs for tested vs pending-tested flows.
 
 ### Milestone 2
