@@ -1,5 +1,10 @@
 # SafeDeps
 
+[![CI](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml)
+[![SafeDeps Policy](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![Release](https://img.shields.io/github/v/release/jaydemks/SafeDeps?display_name=tag)
+
 ![SafeDeps Banner](docs/images/safedeps_banner_2026.png)
 
 SafeDeps is a local dependency firewall.
