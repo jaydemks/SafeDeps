@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10
+    import tomli as tomllib
 
 from safedeps.models import Finding
 from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
