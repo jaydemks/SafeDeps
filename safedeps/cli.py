@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 from . import __version__
+from . import dependency_actions as _dependency_actions_mod
 from . import guard as _guard
+from . import runtime as _runtime_mod
+from . import ui_dependencies as _ui_dependencies_mod
 from .constants import RULE_EXPLAINERS, SEVERITY_ORDER
 from .dependency_actions import (
     _format_command_output,
@@ -79,6 +83,97 @@ from .ui_state import (
     load_intelligence_into_state,
     save_intelligence_from_state,
 )
+
+
+_ORIGINAL_COLLECT_RUNTIME_COMPONENTS = _ui_dependencies_mod.collect_runtime_components
+
+
+class InstallMode(_runtime_mod.InstallMode):
+    def project_runtime_python(self) -> str | None:
+        return _runtime_python_for_project_scope(self.root)
+
+    def system_runtime_python(self) -> str:
+        return _runtime_python_for_system_scope()
+
+
+def _install_mode(root: Path, label: str | None = None) -> InstallMode:
+    return InstallMode(root, label)
+
+
+def _runtime_python_for_action(root: Path, *, action_scope: str | None = None) -> str:
+    return _install_mode(root).runtime_python_for_action(action_scope)
+
+
+def collect_runtime_components(
+    root: Path,
+    *,
+    python_executable: str | None = None,
+    runtime_scope: str = "runtime",
+    fallback_to_process: bool = False,
+    local_only: bool = False,
+):
+    _ui_dependencies_mod.subprocess = subprocess
+    return _ORIGINAL_COLLECT_RUNTIME_COMPONENTS(
+        root,
+        python_executable=python_executable,
+        runtime_scope=runtime_scope,
+        fallback_to_process=fallback_to_process,
+        local_only=local_only,
+    )
+
+
+_COMPAT_COLLECT_RUNTIME_COMPONENTS = collect_runtime_components
+
+
+def render_dependency_table(
+    result,
+    fail_on: str,
+    root: Path,
+    protection_scope: str = "project",
+    installation_scope: str | None = None,
+):
+    collector = globals().get("collect_runtime_components")
+    _ui_dependencies_mod.collect_runtime_components = (
+        collector if collector is not _COMPAT_COLLECT_RUNTIME_COMPONENTS else _ORIGINAL_COLLECT_RUNTIME_COMPONENTS
+    )
+    _ui_dependencies_mod._install_mode = _install_mode
+    _ui_dependencies_mod._has_project_runtime_candidates = _has_project_runtime_candidates
+    _ui_dependencies_mod.subprocess = subprocess
+    return _ui_dependencies_mod.render_dependency_table(
+        result,
+        fail_on,
+        root,
+        protection_scope=protection_scope,
+        installation_scope=installation_scope,
+    )
+
+
+def apply_dependency_action(
+    root: Path,
+    manager: str,
+    action: str,
+    package: str,
+    version: str,
+    mode: str,
+    approved: bool,
+    approval_note: str,
+    action_scope: str | None = None,
+):
+    _dependency_actions_mod.run_scan_pipeline = run_scan_pipeline
+    _dependency_actions_mod._run_cmd = _run_cmd
+    _dependency_actions_mod._runtime_python_for_action = _runtime_python_for_action
+    _dependency_actions_mod._runtime_python_for_system_scope = _runtime_python_for_system_scope
+    return _dependency_actions_mod.apply_dependency_action(
+        root=root,
+        manager=manager,
+        action=action,
+        package=package,
+        version=version,
+        mode=mode,
+        approved=approved,
+        approval_note=approval_note,
+        action_scope=action_scope,
+    )
 
 
 def cmd_init(args):
