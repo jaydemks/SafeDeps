@@ -32,5 +32,8 @@ safedeps = "safedeps.cli:main"
 [tool.setuptools]
 license-files = []
 
+[tool.setuptools.package-data]
+safedeps = ["assets/*.png"]
+
 [tool.setuptools.packages.find]
 include = ["safedeps*"]

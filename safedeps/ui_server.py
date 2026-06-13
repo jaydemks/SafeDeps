@@ -4,6 +4,7 @@ import argparse
 import os
 import threading
 import webbrowser
+from importlib import resources
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -70,11 +71,12 @@ def cmd_ui(args):
     class UIHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path == "/assets/safedeps-logo.png":
-                logo_path = Path(__file__).resolve().parent.parent / "docs" / "images" / "safedeps_logo.png"
-                if not logo_path.exists():
+                try:
+                    logo_bytes = resources.files("safedeps.assets").joinpath("safedeps_logo.png").read_bytes()
+                except Exception:
                     self.send_error(404)
                     return
-                self._send_bytes(logo_path.read_bytes(), "image/png")
+                self._send_bytes(logo_bytes, "image/png")
                 return
             if self.path != "/":
                 self.send_error(404)
@@ -354,4 +356,3 @@ def cmd_ui(args):
     finally:
         server.server_close()
     return 0
-
