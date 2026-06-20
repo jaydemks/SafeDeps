@@ -170,7 +170,7 @@ def test_run_blocks_unpinned_install_only_when_guard_applies(tmp_path, monkeypat
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
     monkeypatch.setattr(runtime_guard.sys, "argv", argv)
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: None)
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
     messages = []
     exits = []
     monkeypatch.setattr(runtime_guard.sys, "stderr", SimpleNamespace(write=messages.append, flush=lambda: None))
@@ -196,7 +196,7 @@ def test_run_blocks_unpinned_install_from_requirement_file(tmp_path, monkeypatch
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
     monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "install", "-r", "requirements.txt"])
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: None)
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
     monkeypatch.setattr(runtime_guard, "_block", lambda message: (_ for _ in ()).throw(RuntimeError(message)))
 
     with pytest.raises(RuntimeError, match="unpinned runtime install"):
@@ -213,7 +213,7 @@ def test_run_blocks_direct_url_runtime_install(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
     monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "install", "demo @ git+https://example.test/demo.git"])
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: None)
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
     monkeypatch.setattr(runtime_guard, "_block", lambda message: (_ for _ in ()).throw(RuntimeError(message)))
 
     with pytest.raises(RuntimeError, match="direct URL/VCS runtime install"):
@@ -221,7 +221,11 @@ def test_run_blocks_direct_url_runtime_install(tmp_path, monkeypatch):
 
 
 def test_run_respects_bypass_non_guarded_commands_and_inactive_guard(tmp_path, monkeypatch):
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: (_ for _ in ()).throw(AssertionError("scan")))
+    monkeypatch.setattr(
+        runtime_guard,
+        "_run_scan_or_block",
+        lambda fail_on="HIGH": (_ for _ in ()).throw(AssertionError("scan")),
+    )
     monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "list"])
 
     runtime_guard.run(str(tmp_path))
@@ -249,7 +253,7 @@ def test_run_blocks_uninstall_except_safedeps_self_uninstall(tmp_path, monkeypat
     monkeypatch.setattr(runtime_guard.sys, "stderr", SimpleNamespace(write=messages.append, flush=lambda: None))
     monkeypatch.setattr(runtime_guard.os, "_exit", lambda code: exits.append(code))
     monkeypatch.setattr(runtime_guard, "_cleanup_before_self_uninstall", lambda root: cleanup_calls.append(root))
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: None)
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
 
     monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "uninstall", "requests"])
     runtime_guard.run(str(tmp_path))
@@ -275,7 +279,7 @@ def test_run_blocks_safedeps_update_unless_official_repo_matches(tmp_path, monke
     messages = []
     monkeypatch.setattr(runtime_guard.sys, "stderr", SimpleNamespace(write=messages.append, flush=lambda: None))
     monkeypatch.setattr(runtime_guard.os, "_exit", lambda code: exits.append(code))
-    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda: None)
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
 
     monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "download", "safedeps==0.4.0"])
     runtime_guard.run(str(tmp_path), official_repo="https://github.com/jaydemks/SafeDeps")
@@ -308,9 +312,34 @@ def test_run_scan_or_block_preserves_argv_and_blocks_on_nonzero(monkeypatch):
     monkeypatch.setattr(runtime_guard.os, "_exit", lambda code: exits.append(code))
     monkeypatch.setitem(__import__("sys").modules, "safedeps.cli", SimpleNamespace(main=fake_main))
 
-    runtime_guard._run_scan_or_block()
+    runtime_guard._run_scan_or_block("HIGH")
 
-    assert calls == [["scan", ".", "--fail-on", "CRITICAL"]]
+    assert calls == [["scan", ".", "--fail-on", "HIGH"]]
     assert runtime_guard.sys.argv == ["pip", "install"]
     assert exits == [2]
     assert "blocked pip" in "".join(messages)
+
+
+def test_run_passes_saved_fail_on_threshold_to_scan(tmp_path, monkeypatch):
+    state_file = tmp_path / ".safedeps" / "guard-state.json"
+    state_file.parent.mkdir()
+    state_file.write_text(
+        json.dumps(
+            {
+                "auto_guard": True,
+                "protection_scope": "project",
+                "project_root": str(tmp_path),
+                "fail_on": "MEDIUM",
+            }
+        ),
+        encoding="utf-8",
+    )
+    calls = []
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
+    monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "install", "requests==2.32.3"])
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", calls.append)
+
+    runtime_guard.run(str(tmp_path), expected_venv="/venv")
+
+    assert calls == ["MEDIUM"]

@@ -1860,7 +1860,10 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
         raw = (tmp_path / rel).read_bytes()
         assert b"\r\n" not in raw
 
-    pip_wrapper = (tmp_path / ".safedeps" / "bin" / "pip").read_text(encoding="utf-8")
+    pip_wrapper_path = tmp_path / ".safedeps" / "bin" / "pip"
+    if not pip_wrapper_path.exists():
+        pip_wrapper_path = tmp_path / ".safedeps" / "bin-posix" / "pip"
+    pip_wrapper = pip_wrapper_path.read_text(encoding="utf-8")
     python_wrapper = (tmp_path / ".safedeps" / "bin" / "python").read_text(encoding="utf-8")
     npm_wrapper = (tmp_path / ".safedeps" / "bin" / "npm").read_text(encoding="utf-8")
     pip_ps1 = (tmp_path / ".safedeps" / "bin" / "pip.ps1").read_text(encoding="utf-8")
@@ -1926,7 +1929,10 @@ def test_setup_uses_requested_fail_on_threshold(tmp_path):
 
     assert code == 0
 
-    pip_wrapper = (tmp_path / ".safedeps" / "bin" / "pip").read_text(encoding="utf-8")
+    pip_wrapper_path = tmp_path / ".safedeps" / "bin" / "pip"
+    if not pip_wrapper_path.exists():
+        pip_wrapper_path = tmp_path / ".safedeps" / "bin-posix" / "pip"
+    pip_wrapper = pip_wrapper_path.read_text(encoding="utf-8")
     pip_ps1 = (tmp_path / ".safedeps" / "bin" / "pip.ps1").read_text(encoding="utf-8")
     pip_cmd = (tmp_path / ".safedeps" / "bin" / "pip.cmd").read_text(encoding="utf-8")
     assert "--fail-on HIGH" in pip_wrapper

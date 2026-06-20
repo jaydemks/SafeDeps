@@ -227,12 +227,12 @@ jobs:
           cd /d "%PROJECT%"
           python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           call .safedeps\activate.bat
-          pip install six
+          call pip install six
           if %ERRORLEVEL% EQU 0 (
             echo Expected unpinned pip install to be blocked.
             exit /b 1
           )
-          pip install six==1.17.0
+          call pip install six==1.17.0
           if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
       - name: Project guard blocks requirements installs
         shell: cmd
@@ -243,11 +243,11 @@ jobs:
           echo six>requirements.txt
           python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           call .safedeps\activate.bat
-          pip install -r requirements.txt
+          call pip install -r requirements.txt
           if %ERRORLEVEL% EQU 0 (
             echo Expected unpinned requirements install to be blocked.
             exit /b 1
           )
           echo six==1.17.0>requirements.txt
-          pip install -r requirements.txt
+          call pip install -r requirements.txt
           if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%

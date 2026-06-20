@@ -199,13 +199,13 @@ def _cleanup_before_self_uninstall(root: Path) -> None:
         pass
 
 
-def _run_scan_or_block() -> None:
+def _run_scan_or_block(fail_on: str = "HIGH") -> None:
     try:
         from safedeps.cli import main
 
         old_argv = sys.argv[:]
         try:
-            code = main(["scan", ".", "--fail-on", "CRITICAL"])
+            code = main(["scan", ".", "--fail-on", fail_on])
         finally:
             sys.argv = old_argv
     except SystemExit as exc:
@@ -258,4 +258,5 @@ def run(project_root: str, expected_venv: str = "", official_repo: str = "") -> 
         if not official_repo or official_repo.lower() not in joined.lower():
             _block("Blocked: SafeDeps updates are allowed only from official Git source.")
 
-    _run_scan_or_block()
+    fail_on = str(state.get("fail_on") or "HIGH").upper()
+    _run_scan_or_block(fail_on)

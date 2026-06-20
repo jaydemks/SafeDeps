@@ -961,6 +961,7 @@ exit /b %ERRORLEVEL%
     elif not _state.get("protection_scope") or _state.get("protection_scope") not in ("project", "global"):
         _state["protection_scope"] = default_scope
     _state["project_root"] = str(root)
+    _state["fail_on"] = fail_on
     _state["auto_guard"] = previous_auto_guard
     _state["auto_guard_powershell"] = previous_auto_guard
     auto_guard = previous_auto_guard
