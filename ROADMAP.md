@@ -89,7 +89,8 @@ Focus: make Python/pip coverage closer to SCFW-level evidence by expanding requi
 - [x] Add explicit `--index-url` runtime behavior tests.
 - [x] Add explicit `--extra-index-url` runtime behavior tests.
 - [x] Add required `pip download` source-policy coverage for direct URLs and untrusted extra indexes.
-- Expand the pip-version matrix gradually only after the new behavior cases are green.
+- [x] Expand the pip-version matrix after the new behavior cases are green: `latest`, `23.3.2`, `24.0`, `24.3.1`, and `25.0.1` across the Bash Linux/macOS guard matrix.
+- Consider a wider Python-version-by-pip-version grid only if CI duration remains acceptable.
 
 ## Post-v0.4 Backlog
 
