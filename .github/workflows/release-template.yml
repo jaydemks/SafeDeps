@@ -269,7 +269,7 @@ jobs:
           name: release-manifest
           path: release-artifacts/
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*
