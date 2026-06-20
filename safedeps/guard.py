@@ -152,18 +152,10 @@ from safedeps import runtime_guard
 
 root = Path(sys.argv[1])
 args = sys.argv[2:]
-tokens = [*runtime_guard._package_tokens(args), *runtime_guard._requirement_file_tokens(root, args)]
-for token in tokens:
-    if runtime_guard._looks_like_local_reference(token):
-        continue
-    if runtime_guard._package_name(token) == "safedeps":
-        continue
-    if runtime_guard._looks_like_direct_reference(token):
-        print("Blocked: direct URL/VCS runtime install is not allowed without explicit review.", file=sys.stderr)
-        sys.exit(2)
-    if "==" not in token:
-        print("Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3).", file=sys.stderr)
-        sys.exit(2)
+message = runtime_guard.validate_install_args(root, args)
+if message:
+    print(message, file=sys.stderr)
+    sys.exit(2)
 PY
     then
       exit 2
@@ -634,18 +626,10 @@ from safedeps import runtime_guard
 
 root = Path(sys.argv[1])
 args = sys.argv[2:]
-tokens = [*runtime_guard._package_tokens(args), *runtime_guard._requirement_file_tokens(root, args)]
-for token in tokens:
-    if runtime_guard._looks_like_local_reference(token):
-        continue
-    if runtime_guard._package_name(token) == "safedeps":
-        continue
-    if runtime_guard._looks_like_direct_reference(token):
-        print("Blocked: direct URL/VCS runtime install is not allowed without explicit review.", file=sys.stderr)
-        sys.exit(2)
-    if "==" not in token:
-        print("Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3).", file=sys.stderr)
-        sys.exit(2)
+message = runtime_guard.validate_install_args(root, args)
+if message:
+    print(message, file=sys.stderr)
+    sys.exit(2)
 PY
       then
         exit 2

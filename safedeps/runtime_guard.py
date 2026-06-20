@@ -160,6 +160,42 @@ def _requirement_file_tokens(root: Path, args: list[str]) -> list[str]:
     return tokens
 
 
+def _allowed_pip_registries(root: Path) -> list[str]:
+    try:
+        from safedeps.policy import Policy
+
+        allowed = Policy.load(root).data.get("allowed_registries", {}).get("pip", [])
+        return [str(url).rstrip("/") for url in allowed]
+    except Exception:
+        return []
+
+
+def _untrusted_index_message(root: Path, args: list[str]) -> str | None:
+    allowed = _allowed_pip_registries(root)
+    for url in _option_values(args, {"-i", "--index-url", "--extra-index-url"}):
+        normalized = str(url).rstrip("/")
+        if normalized not in allowed:
+            return f"Blocked: pip index not in allowlist: {url}"
+    return None
+
+
+def validate_install_args(root: Path, args: list[str]) -> str | None:
+    registry_message = _untrusted_index_message(root, args)
+    if registry_message:
+        return registry_message
+
+    for token in [*_package_tokens(args), *_requirement_file_tokens(root, args)]:
+        if _looks_like_direct_reference(token):
+            return "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+        if _looks_like_local_reference(token):
+            continue
+        if _package_name(token) == "safedeps":
+            continue
+        if "==" not in token:
+            return "Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3)."
+    return None
+
+
 def _package_name(token: str) -> str:
     raw = token.strip()
     if " @ " in raw:
@@ -245,15 +281,9 @@ def run(project_root: str, expected_venv: str = "", official_repo: str = "") -> 
         _block("Blocked: python runtime pip uninstall is disabled while SafeDeps guard is active.")
 
     if subcommand == "install":
-        for token in [*_package_tokens(package_args), *_requirement_file_tokens(root, package_args)]:
-            if _looks_like_local_reference(token):
-                continue
-            if _package_name(token) == "safedeps":
-                continue
-            if _looks_like_direct_reference(token):
-                _block("Blocked: direct URL/VCS runtime install is not allowed without explicit review.")
-            if "==" not in token:
-                _block("Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3).")
+        install_message = validate_install_args(root, package_args)
+        if install_message:
+            _block(install_message)
 
     if subcommand in {"install", "download"} and _contains_safedeps(package_args):
         joined = " ".join(package_args)

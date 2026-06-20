@@ -82,11 +82,12 @@ Status: completed on `main` after the post-`v0.4.0` hardening commits. Keep `v0.
 
 Focus: make Python/pip coverage closer to SCFW-level evidence by expanding required cases without broadening ecosystem claims prematurely.
 
-- Add required e2e coverage for constraints files.
-- Add required e2e coverage for editable local installs.
-- Add required e2e coverage for local path installs.
-- Add required e2e coverage for direct URL or wheel-style installs where practical in CI.
-- Add explicit `--index-url` / `--extra-index-url` runtime behavior tests.
+- [x] Add required e2e coverage for constraints files.
+- [x] Add required e2e coverage for editable local installs.
+- [x] Add required e2e coverage for local path installs.
+- [x] Add required e2e coverage for direct URL installs where practical in CI.
+- [x] Add explicit `--index-url` runtime behavior tests.
+- Add explicit `--extra-index-url` runtime behavior tests.
 - Expand the pip-version matrix gradually only after the new behavior cases are green.
 
 ## Post-v0.4 Backlog

