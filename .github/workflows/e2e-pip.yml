@@ -193,6 +193,7 @@ jobs:
             Write-Error "Expected unpinned python -m pip install to be blocked."
             exit 1
           }
+          exit 0
       - name: Project scope does not block outside project
         shell: pwsh
         run: |
