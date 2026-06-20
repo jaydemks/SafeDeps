@@ -275,6 +275,29 @@ def test_run_blocks_unpinned_install_from_constraint_file(tmp_path, monkeypatch)
         runtime_guard.run(str(tmp_path), expected_venv="/venv")
 
 
+def test_run_blocks_unpinned_combined_requirements_and_constraints(tmp_path, monkeypatch):
+    state_file = tmp_path / ".safedeps" / "guard-state.json"
+    state_file.parent.mkdir()
+    state_file.write_text(
+        json.dumps({"auto_guard": True, "protection_scope": "project", "project_root": str(tmp_path)}),
+        encoding="utf-8",
+    )
+    (tmp_path / "requirements.txt").write_text("six==1.17.0\n", encoding="utf-8")
+    (tmp_path / "constraints.txt").write_text("urllib3\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
+    monkeypatch.setattr(
+        runtime_guard.sys,
+        "argv",
+        ["pip", "install", "-r", "requirements.txt", "-c", "constraints.txt"],
+    )
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
+    monkeypatch.setattr(runtime_guard, "_block", lambda message: (_ for _ in ()).throw(RuntimeError(message)))
+
+    with pytest.raises(RuntimeError, match="unpinned runtime install"):
+        runtime_guard.run(str(tmp_path), expected_venv="/venv")
+
+
 def test_run_blocks_direct_url_runtime_install(tmp_path, monkeypatch):
     state_file = tmp_path / ".safedeps" / "guard-state.json"
     state_file.parent.mkdir()

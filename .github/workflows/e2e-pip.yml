@@ -102,6 +102,24 @@ jobs:
           fi
           printf "urllib3==2.2.3\n" > constraints.txt
           pip install -c constraints.txt six==1.17.0
+      - name: Activated shell blocks combined requirements and constraints
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-combined-requirements-constraints-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          printf "six==1.17.0\n" > requirements.txt
+          printf "urllib3\n" > constraints.txt
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install -r requirements.txt -c constraints.txt; then
+            echo "Expected unpinned combined constraints install to be blocked."
+            exit 1
+          fi
+          printf "urllib3==2.2.3\n" > constraints.txt
+          pip install -r requirements.txt -c constraints.txt
       - name: Activated shell blocks risky pip sources
         shell: bash
         run: |
@@ -166,6 +184,20 @@ jobs:
           hash -r
           pip install --no-build-isolation "$package_path"
           pip install --no-build-isolation -e "$package_editable"
+      - name: Activated shell blocks pip uninstall
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-uninstall-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip uninstall -y six; then
+            echo "Expected pip uninstall to be blocked."
+            exit 1
+          fi
       - name: Activated shell blocks python -m pip bypass
         shell: bash
         run: |
@@ -193,6 +225,22 @@ jobs:
           hash -r
           cd "$outside"
           pip install six==1.17.0
+      - name: Global scope blocks outside project
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-global-scope-e2e"
+          outside="$RUNNER_TEMP/safedeps-global-scope-outside"
+          mkdir -p "$project" "$outside"
+          cd "$project"
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope global
+          source ./.safedeps/activate.sh
+          hash -r
+          cd "$outside"
+          if pip install six; then
+            echo "Expected global scope to block unpinned install outside project."
+            exit 1
+          fi
       - name: Project venv guard blocks pip installs
         shell: bash
         run: |
