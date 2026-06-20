@@ -15,6 +15,7 @@ from .runtime import (
     _install_mode,
 )
 
+
 def render_findings_table(result: ScanResult):
     if not result.findings:
         return "<p>No findings.</p>"

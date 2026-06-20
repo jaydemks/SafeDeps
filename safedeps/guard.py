@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from contextlib import suppress
 from pathlib import Path
 
 from .guard_backend import GuardBackendFiles, write_guard_backend_files
@@ -70,10 +71,8 @@ def cmd_setup(args):
     _init_project(root, args.force)
     previous_state = _load_guard_state(root)
     previous_auto_guard = _state_auto_guard_enabled(previous_state)
-    try:
+    with suppress(Exception):
         cleanup_guard_install(root, remove_project_artifacts=False, disable_auto_guard=False)
-    except Exception:
-        pass
     bindir = root / ".safedeps" / "bin"
     bindir.mkdir(parents=True, exist_ok=True)
     posix_bindir = root / ".safedeps" / "bin-posix" if _is_windows() else bindir
@@ -962,10 +961,8 @@ exit /b %ERRORLEVEL%
     auto_guard = previous_auto_guard
     _write_guard_state(root, _state)
     # Hard resync of profile hooks on reinstall/setup with verification.
-    try:
+    with suppress(Exception):
         _force_autoguard_resync(root, auto_guard)
-    except Exception:
-        pass
     _state = _load_guard_state(root)
     _state["project_root"] = str(root)
     _write_guard_state(root, _state)

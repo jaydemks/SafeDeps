@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +11,8 @@ from . import dependency_actions as _dependency_actions_mod
 from . import guard as _guard
 from . import runtime as _runtime_mod
 from . import ui_dependencies as _ui_dependencies_mod
-from .constants import SEVERITY_ORDER
 from .cli_parser import build_parser
+from .constants import SEVERITY_ORDER
 from .dependency_actions import _format_dependency_ui_error, _run_cmd  # noqa: F401
 from .doctor import cmd_doctor
 from .exceptions import cmd_approve, cmd_baseline, cmd_explain
@@ -32,7 +33,6 @@ from .runtime import (
 from .scan import run_scan_pipeline
 from .ui_render import render_ui_page  # noqa: F401 - compatibility re-export
 from .ui_server import cmd_ui, cmd_ui_shortcut
-
 
 _ORIGINAL_COLLECT_RUNTIME_COMPONENTS = _ui_dependencies_mod.collect_runtime_components
 
@@ -188,14 +188,12 @@ def cmd_version(args):
 
 def cmd_guard_cleanup(args):
     root = Path(args.path).resolve()
-    try:
+    with suppress(Exception):
         _guard.cleanup_guard_install(
             root,
             remove_project_artifacts=bool(getattr(args, "remove_project_artifacts", False)),
             disable_auto_guard=True,
         )
-    except Exception:
-        pass
     return 0
 
 

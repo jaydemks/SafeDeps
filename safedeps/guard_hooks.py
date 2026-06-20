@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import os
 import site
+from contextlib import suppress
 from pathlib import Path
 
 from .policy import DEFAULT_POLICY
+
 
 def _init_project(root: Path, force: bool):
     target = root / ".safedeps" / "policy.json"
@@ -16,14 +18,10 @@ def _init_project(root: Path, force: bool):
 
 def _site_package_candidates() -> list[Path]:
     candidates: list[Path] = []
-    try:
+    with suppress(Exception):
         candidates.extend(Path(p) for p in site.getsitepackages())
-    except Exception:
-        pass
-    try:
+    with suppress(Exception):
         candidates.append(Path(site.getusersitepackages()))
-    except Exception:
-        pass
     seen = set()
     out = []
     for candidate in candidates:

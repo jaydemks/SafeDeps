@@ -108,15 +108,12 @@ def test_project_health_warnings_cover_python_and_empty_paths(tmp_path):
 
 
 def test_python_env_warnings_handles_pytest_failures(monkeypatch):
-    monkeypatch.setattr(doctor.sys, "version_info", (3, 9, 0))
-
     class FailedProc:
         returncode = 1
 
     monkeypatch.setattr(doctor.subprocess, "run", lambda *args, **kwargs: FailedProc())
     warnings = doctor._python_env_warnings()
 
-    assert "Python <3.10 detected" in warnings[0]
     assert any("pytest is not available" in warning for warning in warnings)
 
     monkeypatch.setattr(

@@ -1,5 +1,5 @@
-import stat
 import os
+import stat
 
 from safedeps.guard_backend import GuardBackendFiles, write_guard_backend_files
 

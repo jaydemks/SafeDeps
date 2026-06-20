@@ -4,11 +4,11 @@ from safedeps import __version__
 from safedeps.models import Finding, ScanResult
 from safedeps.policy import Policy
 from safedeps.reports import (
+    REPORT_RENDERERS,
     _component_ref,
     _finding_fingerprint_from_dict,
     _purl_for,
     _unique_components,
-    REPORT_RENDERERS,
     apply_vulnerability_baseline,
     finding_fingerprint,
     to_cyclonedx,

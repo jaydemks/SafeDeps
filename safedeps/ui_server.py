@@ -4,15 +4,26 @@ import argparse
 import os
 import threading
 import webbrowser
-from importlib import resources
+from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs
 
+from . import guard as _guard
 from .constants import RULE_EXPLAINERS, SEVERITY_ORDER
-from .dependency_actions import apply_dependency_action, apply_policy_quick_update, _format_dependency_ui_error
+from .dependency_actions import (
+    _format_dependency_ui_error,
+    apply_dependency_action,
+    apply_policy_quick_update,
+)
 from .exceptions import upsert_approval_entry, write_baseline_file
-from .runtime import _default_ui_workspace, _install_mode, _normalize_project_path, _resolve_ui_start_path
+from .runtime import (
+    _default_ui_workspace,
+    _install_mode,
+    _normalize_project_path,
+    _resolve_ui_start_path,
+)
 from .scan import run_scan_pipeline
 from .ui_render import render_ui_page
 from .ui_state import (
@@ -21,7 +32,6 @@ from .ui_state import (
     load_intelligence_into_state,
     save_intelligence_from_state,
 )
-from . import guard as _guard
 
 cmd_setup = _guard.cmd_setup
 apply_guard_toggle = _guard.apply_guard_toggle
@@ -278,7 +288,7 @@ def cmd_ui(args):
             except Exception as e:
                 refreshed_result = None
                 refreshed_outdir = None
-                try:
+                with suppress(Exception):
                     refreshed_result, refreshed_outdir = run_scan_pipeline(
                         root=scan_path,
                         policy_arg=(form.get("policy", [""])[0] or None),
@@ -290,8 +300,6 @@ def cmd_ui(args):
                         spdx="",
                         html="",
                     )
-                except Exception:
-                    pass
                 err_text = str(e)
                 if self.path == "/deps":
                     ui_state["dependency_output"] = f"Error: {_format_dependency_ui_error(err_text)}"

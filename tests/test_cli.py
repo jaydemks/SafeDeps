@@ -1,29 +1,35 @@
-import pytest
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
+
 import safedeps.cli as cli_mod
 import safedeps.guard as guard_mod
 import safedeps.guard_state as guard_state_mod
 import safedeps.runtime_guard as runtime_guard_mod
-from safedeps.guard import _filter_guard_path_entries, _strip_autoguard_blocks, _strip_cmd_autorun_blocks
+from safedeps import __version__
 from safedeps.cli import (
-    main,
-    render_ui_page,
-    render_dependency_table,
-    _resolve_ui_start_path,
-    _is_project_scoped_install,
-    _normalize_project_path,
     _detect_project_runtime_python,
     _install_mode,
+    _is_project_scoped_install,
+    _normalize_project_path,
     _project_runtime_python,
-    collect_runtime_components,
+    _resolve_ui_start_path,
     apply_dependency_action,
+    collect_runtime_components,
+    main,
+    render_dependency_table,
+    render_ui_page,
 )
-from safedeps import __version__
-from safedeps.models import ScanResult, Finding
+from safedeps.guard import (
+    _filter_guard_path_entries,
+    _strip_autoguard_blocks,
+    _strip_cmd_autorun_blocks,
+)
+from safedeps.models import Finding, ScanResult
 from safedeps.scanners import yaml as scanners_yaml
 
 

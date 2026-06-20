@@ -8,6 +8,7 @@ from typing import Any
 from .constants import RULE_EXPLAINERS
 from .reports import _finding_fingerprint_from_dict
 
+
 def upsert_approval_entry(root: Path, baseline_rel: str, manager: str, rule: str, package: str, file_value: str, expires: str):
     if not manager or not rule:
         raise ValueError("manager and rule are required")

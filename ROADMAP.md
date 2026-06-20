@@ -111,7 +111,8 @@ Focus: make quality checks catch real defects while avoiding a noisy one-shot mi
 
 - [x] Remove `ignore_errors = true` from mypy.
 - [x] Expand Ruff from syntax-only checks to unused imports, redefinitions, unused variables, exception chaining, and sorted public exports.
-- Keep line-length, import-order, pyupgrade, simplify, and broader Ruff migrations as separate passing steps.
+- [x] Add import sorting, pyupgrade, and simplify Ruff gates with passing fixes.
+- Keep line-length, broad pylint-style rules, and deeper refactors as separate passing steps.
 
 ## Post-v0.4 Backlog
 

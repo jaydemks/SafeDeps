@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+
 def detect_official_repo_url(root: Path):
     try:
         proc = subprocess.run(

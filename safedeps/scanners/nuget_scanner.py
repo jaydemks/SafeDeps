@@ -19,9 +19,7 @@ def _is_floating_or_range_version(version: str) -> bool:
         return True
     if "," in ver:
         return True
-    if ver.startswith(("[", "(")) or ver.endswith(("]", ")")):
-        return True
-    return False
+    return ver.startswith(("[", "(")) or ver.endswith(("]", ")"))
 
 
 class NugetScanner(Scanner):

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .constants import SEVERITY_ORDER
 
+
 def default_ui_state(scan_path: Path, fail_on: str):
     return {
         "path": str(scan_path),

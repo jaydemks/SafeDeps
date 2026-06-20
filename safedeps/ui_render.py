@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from . import guard as _guard
 from .constants import SEVERITY_ORDER
 from .models import ScanResult
 from .reports import _html_escape
@@ -9,13 +10,12 @@ from .runtime import (
     _install_mode,
 )
 from .ui_assets import UI_CSS
-from .ui_state import default_ui_state, load_intelligence_into_state
 from .ui_dependencies import (
     render_dependency_table,
     render_findings_table,
     render_pip_guard_panel,
 )
-from . import guard as _guard
+from .ui_state import default_ui_state, load_intelligence_into_state
 
 get_setup_status = _guard.get_setup_status
 get_guard_mode_status = _guard.get_guard_mode_status
@@ -54,7 +54,7 @@ def render_ui_page(
     shell_guard_status = get_current_shell_guard_status(scan_path)
     options = "".join(
         f"<option value=\"{s}\"{' selected' if s == state['fail_on'] else ''}>{s}</option>"
-        for s in SEVERITY_ORDER.keys()
+        for s in SEVERITY_ORDER
     )
     status_html = ""
     if error:

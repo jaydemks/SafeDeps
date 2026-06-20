@@ -7,7 +7,6 @@ import shlex
 import sys
 from pathlib import Path
 
-
 GUARDED_PIP_COMMANDS = {"install", "uninstall", "download"}
 
 
@@ -220,10 +219,9 @@ def _guard_applies(root: Path, expected_venv: str, state: dict) -> bool:
     project_root = Path(str(state.get("project_root") or root)).resolve()
     if scope != "global" and not _is_subpath(Path.cwd(), project_root):
         return False
-    if scope != "global" and expected_venv:
-        if _norm_path(sys.prefix) != _norm_path(expected_venv):
-            return False
-    return True
+    return not (
+        scope != "global" and expected_venv and _norm_path(sys.prefix) != _norm_path(expected_venv)
+    )
 
 
 def _cleanup_before_self_uninstall(root: Path) -> None:

@@ -6,11 +6,11 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import guard as _guard
 from .policy import DEFAULT_POLICY, Policy
 from .runtime import _runtime_python_for_action, _runtime_python_for_system_scope
 from .scan import run_scan_pipeline
 from .scanners.metadata_signals import MetadataSignals
-from . import guard as _guard
 
 get_protection_scope = _guard.get_protection_scope
 
@@ -84,10 +84,8 @@ def _is_valid_package_name(name: str):
 def _is_exact_version(ver: str):
     if not ver:
         return False
-    for bad in ("^", "~", "*", ">", "<", "=", "latest", "x"):
-        if bad in ver.lower():
-            return False
-    return True
+    lower = ver.lower()
+    return all(bad not in lower for bad in ("^", "~", "*", ">", "<", "=", "latest", "x"))
 
 def _run_cmd(args: list[str], cwd: Path):
     proc = subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
@@ -343,9 +341,7 @@ def apply_dependency_action(
         else:
             cmd = [runtime_python, "-m", "pip", "uninstall", "-y", package]
     else:
-        if action == "install":
-            cmd = ["npm", "install", f"{package}@{resolved_version}"]
-        elif action == "update":
+        if action == "install" or action == "update":
             cmd = ["npm", "install", f"{package}@{resolved_version}"]
         else:
             cmd = ["npm", "uninstall", package]
@@ -423,4 +419,3 @@ def apply_dependency_action(
         f"{manager} {action} completed for {package}{ver_text}. "
         f"Pre/post CRITICAL checks passed and compatibility checks passed.{approved_msg}"
     ), "\n\n".join(logs)
-

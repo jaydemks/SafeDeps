@@ -9,7 +9,6 @@ from pathlib import Path
 from .guard_state import get_current_shell_guard_status, get_guard_mode_status, get_setup_status
 from .policy import validate_policy_schema_v1
 
-
 _KNOWN_MANIFESTS = {
     "pip": ("requirements.txt", "pyproject.toml", "Pipfile", "poetry.lock", "uv.lock"),
     "npm": ("package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"),
@@ -151,8 +150,6 @@ def _toolchain_warnings(root: Path):
 
 def _python_env_warnings():
     warnings = []
-    if sys.version_info < (3, 10):
-        warnings.append("Python <3.10 detected. SafeDeps requires Python 3.10+.")
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "pytest", "--version"],

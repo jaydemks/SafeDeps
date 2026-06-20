@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .guard_state import _load_guard_state, _write_guard_state
 
+
 def _default_ui_workspace():
     home = Path.home()
     return (home / ".safedeps" / "workspace").resolve()

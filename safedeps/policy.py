@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+import datetime
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
-import json, datetime
 
 DEFAULT_POLICY = {
   "schema": "safedeps.policy.v1",
@@ -46,7 +48,7 @@ class Policy:
     path: Path | None = None
 
     @classmethod
-    def load(cls, project: Path, explicit: str | None = None) -> "Policy":
+    def load(cls, project: Path, explicit: str | None = None) -> Policy:
         candidates = []
         if explicit:
             candidates.append(Path(explicit))

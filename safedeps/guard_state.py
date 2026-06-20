@@ -5,9 +5,11 @@ import os
 import re
 import shutil
 import sys
+from contextlib import suppress
 from pathlib import Path
 
 from .guard_hooks import remove_interpreter_guard_hook
+
 
 def get_setup_status(root: Path):
     pip_wrapper = root / ".safedeps" / "bin" / "pip.cmd" if _is_windows() else root / ".safedeps" / "bin" / "pip"
@@ -133,10 +135,8 @@ def _write_cmd_autorun_windows(value: str):
             if value.strip():
                 winreg.SetValueEx(key, "AutoRun", 0, winreg.REG_EXPAND_SZ, value)
             else:
-                try:
+                with suppress(FileNotFoundError):
                     winreg.DeleteValue(key, "AutoRun")
-                except FileNotFoundError:
-                    pass
         return True
     except Exception:
         return False
