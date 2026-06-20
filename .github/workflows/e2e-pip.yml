@@ -181,15 +181,20 @@ jobs:
       - name: Activated shell blocks python -m pip bypass
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Continue"
+          $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
           python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          $script = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-bypass.ps1"
+          @'
           . .\.safedeps\activate.ps1
-          & pwsh -NoProfile -Command ". .\.safedeps\activate.ps1; python -m pip install six"
-          if ($LASTEXITCODE -eq 0) {
+          python -m pip install six
+          exit $LASTEXITCODE
+          '@ | Set-Content -Path $script -Encoding utf8
+          $child = Start-Process -FilePath "pwsh" -ArgumentList @("-NoProfile", "-File", $script) -WorkingDirectory $project -Wait -PassThru -NoNewWindow
+          if ($child.ExitCode -eq 0) {
             Write-Error "Expected unpinned python -m pip install to be blocked."
             exit 1
           }
