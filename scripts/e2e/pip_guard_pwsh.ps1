@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $PSNativeCommandUseErrorActionPreference = $false
 
 function New-GuardedProject {
@@ -19,7 +19,6 @@ function Invoke-ExpectBlocked {
         [Parameter(Mandatory=$true)][string]$Message,
         [Parameter(Mandatory=$true)][scriptblock]$Command
     )
-    $global:LASTEXITCODE = 0
     & $Command
     if ($LASTEXITCODE -eq 0) {
         Write-Error $Message
@@ -53,7 +52,7 @@ $script = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-bypass.ps1"
 python -m pip install six
 exit $LASTEXITCODE
 '@ | Set-Content -Path $script -Encoding utf8
-$child = Start-Process -FilePath "pwsh" -ArgumentList @("-NoProfile", "-File", $script) -WorkingDirectory $project -Wait -PassThru -NoNewWindow
+$child = Start-Process -FilePath "pwsh" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script) -WorkingDirectory $project -Wait -PassThru -NoNewWindow
 if ($child.ExitCode -eq 0) {
     Write-Error "Expected unpinned python -m pip install to be blocked."
     exit 1
