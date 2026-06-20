@@ -9,6 +9,9 @@ from safedeps.scanners.base import Scanner
 
 class GitScanner(Scanner):
     manager = "git"
+    manifests = (".gitmodules",)
+    lockfiles = ()
+    supports_runtime_guard = False
 
     def scan(self, root: Path, policy):
         findings: list[Finding] = []

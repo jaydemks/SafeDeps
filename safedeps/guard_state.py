@@ -263,8 +263,11 @@ def _set_powershell_autoguard(root: Path, enable: bool):
     updated_any = False
     candidates = _powershell_profile_candidates()
     for profile in candidates:
-        profile.parent.mkdir(parents=True, exist_ok=True)
-        content = profile.read_text(encoding="utf-8") if profile.exists() else ""
+        try:
+            profile.parent.mkdir(parents=True, exist_ok=True)
+            content = profile.read_text(encoding="utf-8") if profile.exists() else ""
+        except OSError:
+            continue
         cleaned = _strip_autoguard_blocks(content)
         if enable:
             updated = cleaned
@@ -272,13 +275,19 @@ def _set_powershell_autoguard(root: Path, enable: bool):
                 updated += "\n"
             updated += snippet
             if updated != content:
-                profile.write_text(updated, encoding="utf-8")
-                updated_any = True
+                try:
+                    profile.write_text(updated, encoding="utf-8")
+                    updated_any = True
+                except OSError:
+                    continue
         else:
             updated = cleaned
             if updated != content:
-                profile.write_text(updated, encoding="utf-8")
-                updated_any = True
+                try:
+                    profile.write_text(updated, encoding="utf-8")
+                    updated_any = True
+                except OSError:
+                    continue
     state = _load_guard_state(root)
     state["auto_guard"] = enable
     state["auto_guard_powershell"] = enable
@@ -332,10 +341,17 @@ def _cmd_autorun_snippet_present(root: Path):
     return expected in current and "SafeDeps Auto Guard" in current
 
 def _path_guard_entry_present(root: Path):
-    guard_bin = str((root / ".safedeps" / "bin").resolve()).lower()
+    guard_bin = str((root / ".safedeps" / "bin").resolve()).lower().replace("\\", "/")
     if _is_windows():
-        return any(str(e).strip().lower() == guard_bin for e in _get_user_path_entries_windows())
-    return any(str(e).strip().lower() == guard_bin for e in os.environ.get("PATH", "").split(os.pathsep) if e)
+        return any(
+            str(e).strip().lower().replace("\\", "/") == guard_bin
+            for e in _get_user_path_entries_windows()
+        )
+    return any(
+        str(e).strip().lower().replace("\\", "/") == guard_bin
+        for e in os.environ.get("PATH", "").split(os.pathsep)
+        if e
+    )
 
 def _effective_autoguard_enabled(root: Path):
     return _profile_snippet_present(root) or _cmd_autorun_snippet_present(root) or _path_guard_entry_present(root)

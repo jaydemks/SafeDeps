@@ -31,6 +31,15 @@ DEFAULT_POLICY = {
   ]
 }
 
+
+class PolicyValidationError(ValueError):
+    def __init__(self, path: Path | None, issues: list[str]):
+        self.path = path
+        self.issues = issues
+        location = f"{path}: " if path else ""
+        super().__init__(location + "; ".join(issues))
+
+
 @dataclass
 class Policy:
     data: dict = field(default_factory=lambda: dict(DEFAULT_POLICY))
@@ -45,6 +54,9 @@ class Policy:
         for p in candidates:
             if p.exists():
                 data = json.loads(p.read_text(encoding="utf-8"))
+                issues = validate_policy_schema_v1(data)
+                if issues:
+                    raise PolicyValidationError(p, issues)
                 merged = json.loads(json.dumps(DEFAULT_POLICY))
                 deep_update(merged, data)
                 return cls(merged, p)
@@ -75,3 +87,70 @@ def deep_update(a: dict, b: dict) -> dict:
         else:
             a[k] = v
     return a
+
+
+def validate_policy_schema_v1(policy: object) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(policy, dict):
+        return ["policy.json must be a JSON object."]
+
+    schema = policy.get("schema")
+    if schema is not None and schema != "safedeps.policy.v1":
+        issues.append("policy.schema must be 'safedeps.policy.v1' when present.")
+
+    allowed = policy.get("allowed_registries")
+    if allowed is not None:
+        if not isinstance(allowed, dict):
+            issues.append("policy.allowed_registries must be an object when present.")
+        else:
+            for manager, urls in allowed.items():
+                if not isinstance(manager, str) or not manager.strip():
+                    issues.append("policy.allowed_registries keys must be non-empty strings.")
+                    continue
+                if not isinstance(urls, list):
+                    issues.append(f"policy.allowed_registries.{manager} must be a list of registry URLs.")
+                    continue
+                for index, url in enumerate(urls):
+                    if not isinstance(url, str) or not url.strip():
+                        issues.append(
+                            f"policy.allowed_registries.{manager}[{index}] must be a non-empty string."
+                        )
+
+    deny = policy.get("deny_packages")
+    if deny is not None:
+        if not isinstance(deny, list):
+            issues.append("policy.deny_packages must be a list when present.")
+        else:
+            for index, package in enumerate(deny):
+                if not isinstance(package, str) or not package.strip():
+                    issues.append(f"policy.deny_packages[{index}] must be a non-empty string.")
+
+    _validate_bool(policy, "allow_unpinned", issues)
+    _validate_bool(policy, "require_lockfiles", issues)
+    _validate_bool(policy, "enable_package_age_checks", issues)
+    _validate_bool(policy, "enable_publisher_churn_checks", issues)
+    _validate_bool(policy, "enable_maintainer_change_checks", issues)
+
+    _validate_non_negative_int(policy, "min_package_age_days", issues)
+    _validate_non_negative_int(policy, "max_publisher_changes_90d", issues)
+    _validate_non_negative_int(policy, "max_maintainer_changes_180d", issues)
+
+    exceptions = policy.get("exceptions")
+    if exceptions is not None and not isinstance(exceptions, list):
+        issues.append("policy.exceptions must be a list when present.")
+
+    return issues
+
+
+def _validate_bool(policy: dict, key: str, issues: list[str]) -> None:
+    value = policy.get(key)
+    if value is not None and not isinstance(value, bool):
+        issues.append(f"policy.{key} must be true or false when present.")
+
+
+def _validate_non_negative_int(policy: dict, key: str, issues: list[str]) -> None:
+    value = policy.get(key)
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        issues.append(f"policy.{key} must be a non-negative integer when present.")

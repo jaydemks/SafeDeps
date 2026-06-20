@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import safedeps.cli as cli_mod
 import safedeps.guard as guard_mod
+import safedeps.guard_state as guard_state_mod
 import safedeps.runtime_guard as runtime_guard_mod
 from safedeps.guard import _filter_guard_path_entries, _strip_autoguard_blocks, _strip_cmd_autorun_blocks
 from safedeps.cli import (
@@ -1194,9 +1195,9 @@ def test_cleanup_guard_install_disables_auto_guard(monkeypatch, tmp_path):
         state["auto_guard_powershell"] = enable
         guard_mod._write_guard_state(root, state)
 
-    monkeypatch.setattr(guard_mod, "_set_user_path_guard_entry", lambda root, enable: True)
-    monkeypatch.setattr(guard_mod, "_set_powershell_autoguard", fake_set_autoguard)
-    monkeypatch.setattr(guard_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
+    monkeypatch.setattr(guard_state_mod, "_set_user_path_guard_entry", lambda root, enable: True)
+    monkeypatch.setattr(guard_state_mod, "_set_powershell_autoguard", fake_set_autoguard)
+    monkeypatch.setattr(guard_state_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
 
     guard_mod.cleanup_guard_install(tmp_path)
 
@@ -1218,9 +1219,9 @@ def test_cleanup_guard_install_can_preserve_auto_guard_for_setup(monkeypatch, tm
         state["auto_guard_powershell"] = enable
         guard_mod._write_guard_state(root, state)
 
-    monkeypatch.setattr(guard_mod, "_set_user_path_guard_entry", lambda root, enable: True)
-    monkeypatch.setattr(guard_mod, "_set_powershell_autoguard", fake_set_autoguard)
-    monkeypatch.setattr(guard_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
+    monkeypatch.setattr(guard_state_mod, "_set_user_path_guard_entry", lambda root, enable: True)
+    monkeypatch.setattr(guard_state_mod, "_set_powershell_autoguard", fake_set_autoguard)
+    monkeypatch.setattr(guard_state_mod, "_set_cmd_autorun_autoguard", lambda root, enable: True)
 
     guard_mod.cleanup_guard_install(tmp_path, disable_auto_guard=False)
 
@@ -1742,7 +1743,7 @@ def test_explain_output_stability(capsys):
     out = capsys.readouterr().out
     assert out.splitlines() == [
         "FLOATING_VERSION",
-        "Dependency version is not pinned exactly. Pin exact versions to reduce supply-chain drift.",
+        "Dependency version is not pinned exactly. Fix: pin exact versions to reduce supply-chain drift.",
     ]
 
 
@@ -1867,6 +1868,9 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path):
     npm_cmd = (tmp_path / ".safedeps" / "bin" / "npm.cmd").read_text(encoding="utf-8")
     pip_cmd = (tmp_path / ".safedeps" / "bin" / "pip.cmd").read_text(encoding="utf-8")
     activate_bat = (tmp_path / ".safedeps" / "activate.bat").read_text(encoding="utf-8")
+    expected_python = str(Path(sys.executable).absolute())
+    assert f'REAL_PY="{expected_python}"' in pip_wrapper
+    assert f'REAL_PY="{expected_python}"' in python_wrapper
     assert 'if [ -z "${VIRTUAL_ENV:-}" ]' not in pip_wrapper
     assert 'if [ -z "${VIRTUAL_ENV:-}" ]' not in python_wrapper
     assert "Blocked: pip uninstall is disabled while SafeDeps guard is active." in pip_wrapper
@@ -1874,6 +1878,9 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path):
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_wrapper
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_ps1
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_cmd
+    direct_url_message = "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+    for wrapper_text in (pip_wrapper, python_wrapper, pip_ps1, python_ps1, pip_cmd, python_cmd):
+        assert direct_url_message in wrapper_text
     assert "setlocal EnableExtensions EnableDelayedExpansion" in pip_cmd
     assert "setlocal EnableExtensions EnableDelayedExpansion" in python_cmd
     assert 'set "_real_python=' in pip_cmd

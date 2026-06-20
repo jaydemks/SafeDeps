@@ -1,148 +1,142 @@
 # SafeDeps Roadmap (Next)
 
-This roadmap tracks the next practical milestones after the recent runtime-guard and UI stabilization work.
+This file tracks work after the `v0.4.0` Beta Preview stabilization roadmap.
 
-## Guiding Priorities
+`MAIN_ROADMAP.md` is the authoritative record for the long stabilization push that brought SafeDeps to the current pre-release state. This file should stay focused on future work only, so old completed items are not repeated as active TODOs.
 
-1. Security-first behavior stays the default.
-2. UX must remain understandable for non-expert users.
-3. Cross-platform reliability (Windows, Linux, macOS) is mandatory.
+## Current Baseline
 
-## Track A - Validation And Hardening
+Status after `MAIN_ROADMAP.md` reconciliation:
 
-### A1. Deep Test Coverage For Not-Yet-Validated Flows
+- `v0.4.0` Beta Preview stabilization work is functionally complete pending final human review, commit, tag, and release.
+- Local gate is green: `324` tests, `91.61%` coverage, package build, `twine check`, and CLI smoke.
+- Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
+- Python/pip is the primary stable runtime guard path.
+- npm and NuGet scan support are validated, while runtime protection remains limited or experimental unless explicitly documented otherwise.
+- Local UI smoke has been manually validated from the native Windows side for the core Python/safe/bad fixture path.
+- Trusted Publishing and release attestations remain release-gated until workflow validation.
 
-- Expand end-to-end validation for npm dependency protection.
-- Expand end-to-end validation for NuGet/.NET dependency protection.
-- Move npm and NuGet protection toward native ecosystem integration instead of relying only on generated wrappers.
-- Add cross-shell validation matrix:
-  - PowerShell
-  - CMD
-  - Bash
-- Add regression suite for:
-  - toggle behavior (`Auto ON/OFF`, `Project/Global`)
-  - no-full-reload UI behavior
-  - wrapper regeneration and activation paths
+## Completed Or Superseded By v0.4.0
 
-### A2. Security Regression Guardrails
+The following old roadmap themes have already been absorbed by `v0.4.0` and should not be treated as open work here:
 
-- Add integration tests to ensure unpinned installs are blocked where expected.
-- Add tests for "Project" vs "Global" scope boundaries.
-- Add tests for self-update/source restrictions and known bypass paths.
+- core test expansion and coverage gate;
+- `make checks` release gate;
+- Ruff, mypy, pytest coverage, build, `twine check`, and CLI smoke;
+- CI quality/security scaffolding;
+- OS/Python/shell/package-manager workflow matrix;
+- threat model, limitations, policy, bypass/approval, ecosystem support, comparison, CI integration, release process, and contribution docs;
+- release notes and version alignment for `0.4.0`;
+- CLI parser extraction and thinner command dispatch;
+- package-manager adapter layer;
+- verifier interface and supply-chain signal verifier pipeline;
+- report output registry;
+- guard backend install layer;
+- pip runtime guard hardening for the main supported paths;
+- npm and NuGet scan validation workflows.
 
-## Track B - Install/Uninstall UX Simplification
+## Immediate Pre-Release Work
 
-### B1. Guided Dependency Operations (UI)
+These are the only items that should happen before the `v0.4.0` tag:
 
-- Improve install/update/uninstall workflows with clearer pre-check status.
-- Add explicit operation states per row:
-  - validating
-  - blocked
-  - applied
-- Add clearer user-facing reason messages when an operation is denied.
+1. Follow `docs/maintainers/PRE_RELEASE_REVIEW.md`.
+2. Run the final local gate:
 
-### B2. Safer Bulk Operations (Candidate)
+   ```bash
+   make checks PYTHON=.venv/bin/python
+   ```
 
-- Evaluate bulk safe update flow (batch mode) with strict pre/post checks.
-- Evaluate staged uninstall workflow with impact preview before confirmation.
+3. Run version and release preflight:
 
-### B3. Dependency Repair And Safe Restore (Candidate)
+   ```bash
+   .venv/bin/python scripts/check_versions.py
+   .venv/bin/python scripts/release/preflight.py --expected-version 0.4.0
+   GITHUB_REF_NAME=v0.4.0 .venv/bin/python scripts/release/preflight.py --expected-version 0.4.0 --require-tag
+   ```
 
-- Add a guided repair flow for missing runtime dependencies required by already installed packages.
-- Detect cases like `pytest` requiring `colorama` and offer a safe restore instead of leaving the environment broken.
-- Show dependency impact before repair/uninstall:
-  - package to remove or restore
-  - packages that require it
-  - exact runtime scope affected (`project` or `global`)
-- Add strict loop protection:
-  - maximum dependency expansion depth
-  - maximum number of packages per repair operation
-  - explicit user confirmation before applying transitive repairs
-- Keep repair operations guarded by pre/post compatibility checks (`pip check`, equivalent npm/.NET checks where available).
+4. Review docs and release notes for truthful stable/limited/experimental wording.
+5. Commit, tag, and release only after the review is accepted.
 
-## Track C - UI Redesign And Visual System
+## Post-v0.4 Backlog
 
-### C0. Codebase Decomposition For UI Work
+These items are intentionally not blockers for `v0.4.0`.
 
-- Status: substantially completed in `0.3.3`.
-- Split the former monolithic `safedeps/cli.py` entrypoint into focused modules for constants, scan pipeline, reports/exporters, runtime/install scope detection, dependency actions, UI state, UI rendering, UI server transport, doctor checks, and baseline/approval exceptions.
-- Split guard support code into focused modules for interpreter hook installation, guard state/Auto Guard shell integration, and repository-source detection while keeping `safedeps.guard` as the setup facade.
-- Split dependency/finding table rendering and runtime dependency collection out of the main UI page renderer.
-- Keep `safedeps.cli` as a thin command dispatcher and compatibility facade for existing tests/imports.
-- Remaining refinement: move the large bash/PowerShell/CMD wrapper templates out of `guard.py`, and continue breaking down `ui_render.py` into smaller view/template helpers as the visual redesign progresses.
+### A. Python/pip Guard Hardening
 
-### C1. Full UI Restyle
+- Add or expand coverage for:
+  - `pip install -c constraints.txt -r requirements.txt`;
+  - `pip install .`;
+  - `pip install -e .`;
+  - direct wheel URLs;
+  - local path installs;
+  - explicit `--index-url` / `--extra-index-url` runtime behavior;
+  - global scope runtime behavior;
+  - auto guard on/off transitions.
+- Keep Python/pip as the reference quality bar for other ecosystems.
 
-- Redesign the local web UI as a full product surface, not only incremental guard-flow fixes.
-- Define a consistent layout system for:
-  - header/status area
-  - guard controls
-  - project/system dependency tables
-  - dependency action states
-  - scan findings and policy forms
-- Replace ad hoc spacing and table sizing with responsive rules that prevent long text, package names, paths, and error messages from overflowing their containers.
-- Add visual QA checks for common desktop widths and smaller browser windows.
+### B. npm Truth Release Work
 
-### C2. Interaction Polish
+- Decide the exact npm support level by tested command/version/OS.
+- Expand coverage for:
+  - workspaces;
+  - alias packages such as `alias@npm:real-package`;
+  - git dependencies;
+  - tarball URLs;
+  - local path dependencies.
+- Keep npm runtime guard language experimental until the matrix is no longer diagnostic/experimental.
 
-- Improve collapsible sections for large dependency inventories and future multi-project views.
-- Add clearer empty/loading/error states for project runtime dependencies and system runtime dependencies.
-- Keep guard setup/test actions visible without making advanced policy controls dominate the screen.
+### C. NuGet/.NET Truth Release Work
 
-## Track D - Security Features (Candidate)
+- Validate private package source behavior.
+- Decide whether NuGet remains scan-only or gains runtime guard support.
+- Keep runtime guard claims out of stable docs until end-to-end matrix coverage exists.
 
-### D1. Stronger Trust Signals
+### D. Policy Command Family
 
-- Add optional package-age policy defaults by manager.
-- Add optional maintainer/publisher risk heuristics with explainable output.
-- Improve suspicious package pattern detection and confidence scoring.
+- Decide whether to add dedicated commands:
+  - `safedeps policy init`;
+  - `safedeps policy validate`;
+  - `safedeps policy explain`.
+- Add schema migration support only when a future policy schema version exists.
 
-### D2. Policy And Exception Governance
+### E. UI And Dependency Operations
 
-- Add stronger exception lifecycle controls:
-  - mandatory reason format
-  - expiry reminders
-  - audit trail metadata
-- Add optional policy presets (`strict`, `balanced`, `learning`).
+- Add automated browser-level UI smoke coverage, for example with Playwright or an equivalent lightweight browser runner:
+  - start `safedeps ui` on a test port;
+  - open the dashboard;
+  - run a scan from the UI;
+  - verify safe fixture passes;
+  - verify bad fixture shows blocking findings;
+  - verify dependency and policy panels render without server errors.
+- Add a documented local UI smoke command or script so maintainers can quickly test the real browser experience before release.
+- Improve install/update/uninstall workflows with clearer operation states:
+  - validating;
+  - blocked;
+  - applied;
+  - rolled back.
+- Improve denial explanations and recovery guidance.
+- Evaluate safe bulk updates only after strict pre/post checks are mature.
+- Evaluate guided repair for missing runtime dependencies.
+- Continue UI layout polish and overflow handling as product work, not as a `0.4.0` blocker.
 
-### D3. Supply-Chain Verification (Research)
+### F. Release And Supply-Chain Publishing
 
-- Evaluate signature/provenance verification options where ecosystem supports it.
-- Evaluate checksum enforcement workflow for approved dependency sources.
+- Validate `publish=false` release workflow dry runs.
+- Verify PyPI Trusted Publishing or keep the API-token fallback documented.
+- Validate npm provenance publishing before claiming it.
+- Validate NuGet publish scope and artifact paths.
+- Confirm GitHub build provenance attestations include every release artifact before promoting attestations from scaffolded to guaranteed.
 
-## Track E - Documentation And Adoption
+### G. Adoption And Integrations
 
-### E1. User Docs
+- Consider a first-party GitHub Action.
+- Keep GitLab/Azure examples current.
+- Keep README, UI docs, and ecosystem support docs synchronized each release.
+- Add troubleshooting decision trees for shell/wrapper issues when real user feedback accumulates.
 
-- Keep README and UI docs synchronized with actual behavior each release.
-- Add "UI action -> equivalent CLI command" mapping table.
-- Add troubleshooting decision tree for common shell/wrapper issues.
+## Guardrails
 
-### E2. Release Quality Gates
-
-- Define minimum validation checklist required before PyPI/npm/NuGet publish.
-- Enforce release checklist in CI for version alignment + smoke tests.
-
-## Near-Term Milestones
-
-### Milestone 1 (Next)
-
-- Start npm and NuGet native protection work, using the Python-side guard as the reference quality bar.
-- Complete npm and NuGet deep validation around the current wrapper-based behavior before replacing or reducing it.
-- Stabilize any remaining wrapper edge cases that still affect 0.3.3 users.
-- Publish updated docs for tested vs pending-tested flows.
-
-### Milestone 2
-
-- Improve guided dependency actions UX and denial explanations.
-- Start full UI restyle work, prioritizing layout consistency and overflow fixes.
-- Add regression tests for all critical runtime guard scenarios.
-
-### Milestone 3
-
-- Introduce selected candidate security features from Track D after feasibility review.
-
-## Notes
-
-- Items marked as candidate/research require feasibility validation before commitment.
-- Security and runtime correctness always take precedence over new feature speed.
+- Do not broaden stable ecosystem claims without tests.
+- Do not add large features before release hygiene remains green.
+- Do not treat scaffolded release/publishing paths as guarantees.
+- Prefer small, test-backed changes over broad rewrites.

@@ -6,10 +6,12 @@ from pathlib import Path
 
 from .constants import SEVERITY_ORDER
 from .models import Finding, ScanResult
+from .package_managers import DEFAULT_PACKAGE_MANAGER_ADAPTERS
 from .policy import Policy
-from .reports import apply_vulnerability_baseline, to_cyclonedx, to_html_report, to_sarif, to_spdx
-from .scanners import SCANNERS
+from .reports import apply_vulnerability_baseline, write_scan_outputs
 from .vulnerability_intel import load_local_vulnerability_findings
+
+PACKAGE_MANAGER_ADAPTERS = DEFAULT_PACKAGE_MANAGER_ADAPTERS
 
 def run_scan_pipeline(
     root: Path,
@@ -24,8 +26,8 @@ def run_scan_pipeline(
 ):
     policy=Policy.load(root, policy_arg)
     findings=[]; components=[]
-    for scanner in SCANNERS:
-        f,c=scanner.scan(root, policy)
+    for adapter in PACKAGE_MANAGER_ADAPTERS:
+        f,c=adapter.scan(root, policy)
         findings.extend(f); components.extend(c)
     findings.extend(load_local_vulnerability_findings(root, components))
     if online_audit:
@@ -34,26 +36,16 @@ def run_scan_pipeline(
     threshold=SEVERITY_ORDER[fail_on]
     blocking=[x for x in findings if SEVERITY_ORDER.get(x.severity,0)>=threshold and x.severity!="INFO"]
     result=ScanResult(ok=not blocking, findings=findings, sbom={"bomFormat":"SafeDeps-SBOM-lite","components":components})
-    outdir=root/out
-    outdir.mkdir(parents=True, exist_ok=True)
-    (outdir/"safedeps-report.json").write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
-    (outdir/"safedeps-sbom.json").write_text(json.dumps(result.sbom, indent=2), encoding="utf-8")
-    if sarif:
-        sarif_path = root / sarif
-        sarif_path.parent.mkdir(parents=True, exist_ok=True)
-        sarif_path.write_text(json.dumps(to_sarif(result), indent=2), encoding="utf-8")
-    if cyclonedx:
-        cdx_path = root / cyclonedx
-        cdx_path.parent.mkdir(parents=True, exist_ok=True)
-        cdx_path.write_text(json.dumps(to_cyclonedx(result), indent=2), encoding="utf-8")
-    if spdx:
-        spdx_path = root / spdx
-        spdx_path.parent.mkdir(parents=True, exist_ok=True)
-        spdx_path.write_text(json.dumps(to_spdx(result), indent=2), encoding="utf-8")
-    if html:
-        html_path = root / html
-        html_path.parent.mkdir(parents=True, exist_ok=True)
-        html_path.write_text(to_html_report(result, fail_on), encoding="utf-8")
+    outdir = write_scan_outputs(
+        result,
+        root,
+        out,
+        fail_on=fail_on,
+        sarif=sarif,
+        cyclonedx=cyclonedx,
+        spdx=spdx,
+        html=html,
+    )
     return result, outdir
 
 def run_online_audits(root: Path):
@@ -69,4 +61,3 @@ def run_online_audits(root: Path):
         except Exception as e:
             findings.append(Finding("LOW","npm","AUDIT_UNAVAILABLE",f"npm audit could not run: {e}"))
     return findings
-

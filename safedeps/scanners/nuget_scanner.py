@@ -7,12 +7,28 @@ from pathlib import Path
 
 from safedeps.models import Finding
 from safedeps.scanners.base import Scanner, iter_files, path_is_excluded
-from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
-from safedeps.scanners.typosquat import typosquat_finding
+from safedeps.scanners.metadata_signals import MetadataSignals
+from safedeps.verifiers import verify_package
+
+
+def _is_floating_or_range_version(version: str) -> bool:
+    ver = str(version or "").strip()
+    if not ver:
+        return True
+    if "*" in ver:
+        return True
+    if "," in ver:
+        return True
+    if ver.startswith(("[", "(")) or ver.endswith(("]", ")")):
+        return True
+    return False
 
 
 class NugetScanner(Scanner):
     manager = "nuget"
+    manifests = ("*.csproj", "Directory.Packages.props", "packages.config", "NuGet.Config", "nuget.config")
+    lockfiles = ("packages.lock.json",)
+    supports_runtime_guard = False
 
     def scan(self, root: Path, policy):
         findings: list[Finding] = []
@@ -39,7 +55,7 @@ class NugetScanner(Scanner):
                 if policy.is_denied(name):
                     findings.append(Finding("CRITICAL", "nuget", "DENYLIST", f"Denied package: {name}", file_ref, name, fix="Remove or replace this dependency."))
                 self._append_supply_chain_signals(policy, findings, signals, "nuget", name, file_ref)
-                if not ver or "*" in ver or (not ver.startswith("[") and "," in ver):
+                if _is_floating_or_range_version(ver):
                     findings.append(Finding("HIGH", "nuget", "FLOATING_VERSION", f"Floating or range NuGet version for {name}: {ver or '(none)'}", file_ref, name, fix="Use exact PackageReference versions and packages.lock.json."))
 
         props = root / "Directory.Packages.props"
@@ -75,18 +91,7 @@ class NugetScanner(Scanner):
         return findings, components
 
     def _append_supply_chain_signals(self, policy, findings: list[Finding], signals: MetadataSignals, manager: str, name: str, file_ref: str):
-        typo = typosquat_finding(policy, manager, name, file_ref)
-        if typo:
-            findings.append(typo)
-        age = age_finding(policy, manager, name, file_ref, signals)
-        if age:
-            findings.append(age)
-        churn = churn_finding(policy, manager, name, file_ref, signals)
-        if churn:
-            findings.append(churn)
-        maint = maintainer_change_finding(policy, manager, name, file_ref, signals)
-        if maint:
-            findings.append(maint)
+        findings.extend(verify_package(policy, manager, name, file_ref, signals))
 
     def _scan_directory_packages_props(self, path: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
         try:
@@ -104,7 +109,7 @@ class NugetScanner(Scanner):
             if policy.is_denied(name):
                 findings.append(Finding("CRITICAL", "nuget", "DENYLIST", f"Denied package: {name}", path.name, name, fix="Remove or replace this dependency."))
             self._append_supply_chain_signals(policy, findings, signals, "nuget", name, path.name)
-            if not ver or "*" in ver or (not ver.startswith("[") and "," in ver):
+            if _is_floating_or_range_version(ver):
                 findings.append(Finding("HIGH", "nuget", "FLOATING_VERSION", f"Floating or range NuGet version for {name}: {ver or '(none)'}", path.name, name, fix="Use exact PackageVersion values and lockfiles."))
 
     def _scan_packages_config(self, path: Path, root: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
@@ -124,7 +129,7 @@ class NugetScanner(Scanner):
             if policy.is_denied(name):
                 findings.append(Finding("CRITICAL", "nuget", "DENYLIST", f"Denied package: {name}", file_ref, name, fix="Remove or replace this dependency."))
             self._append_supply_chain_signals(policy, findings, signals, "nuget", name, file_ref)
-            if not ver or "*" in ver or (not ver.startswith("[") and "," in ver):
+            if _is_floating_or_range_version(ver):
                 findings.append(Finding("HIGH", "nuget", "FLOATING_VERSION", f"Floating or range NuGet version for {name}: {ver or '(none)'}", file_ref, name, fix="Use exact package versions and lockfiles."))
 
     def _scan_packages_lock(self, path: Path, root: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):

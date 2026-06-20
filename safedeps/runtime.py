@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import guard as _guard
+from .guard_state import _load_guard_state, _write_guard_state
 
 def _default_ui_workspace():
     home = Path.home()
@@ -188,4 +188,3 @@ def _resolve_ui_start_path(path_arg: str):
         return d
     p = Path(raw).expanduser().resolve()
     return p
-

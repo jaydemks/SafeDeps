@@ -11,14 +11,17 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10
 
 from safedeps.models import Finding
 from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
-from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
-from safedeps.scanners.typosquat import typosquat_finding
+from safedeps.scanners.metadata_signals import MetadataSignals
+from safedeps.verifiers import verify_package
 
 PINNED_PIP = re.compile(r"^[A-Za-z0-9_.-]+(\[[^\]]+\])?==[^=<>!~]+")
 
 
 class PipScanner(Scanner):
     manager = "pip"
+    manifests = ("requirements*.txt", "pyproject.toml")
+    lockfiles = ("requirements.lock", "poetry.lock", "uv.lock", "Pipfile.lock")
+    supports_runtime_guard = True
 
     def scan(self, root: Path, policy):
         findings: list[Finding] = []
@@ -104,18 +107,7 @@ class PipScanner(Scanner):
         return findings, components
 
     def _append_supply_chain_signals(self, policy, findings: list[Finding], signals: MetadataSignals, manager: str, name: str, file_ref: str):
-        typo = typosquat_finding(policy, manager, name, file_ref)
-        if typo:
-            findings.append(typo)
-        age = age_finding(policy, manager, name, file_ref, signals)
-        if age:
-            findings.append(age)
-        churn = churn_finding(policy, manager, name, file_ref, signals)
-        if churn:
-            findings.append(churn)
-        maint = maintainer_change_finding(policy, manager, name, file_ref, signals)
-        if maint:
-            findings.append(maint)
+        findings.extend(verify_package(policy, manager, name, file_ref, signals))
 
     def _check_dep_string(self, raw: str, file_ref: str, policy, findings: list[Finding], components: list[dict], scope: str, signals: MetadataSignals):
         dep = str(raw).strip()

@@ -1,0 +1,244 @@
+name: E2E - npm Validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    name: npm scan - Node ${{ matrix.node-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install SafeDeps from checkout
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Scan blocks floating npm dependency
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-npm-scan"
+          mkdir -p "$project"
+          cd "$project"
+          cat > package.json <<'JSON'
+          {
+            "name": "safedeps-npm-scan",
+            "version": "1.0.0",
+            "dependencies": {
+              "lodash": "^4.17.21"
+            }
+          }
+          JSON
+          if python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts; then
+            echo "Expected floating npm dependency scan to fail."
+            exit 1
+          fi
+      - name: Scan blocks floating npm dependency
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-scan"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          @'
+          {
+            "name": "safedeps-npm-scan",
+            "version": "1.0.0",
+            "dependencies": {
+              "lodash": "^4.17.21"
+            }
+          }
+          '@ | Set-Content -Path package.json
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected floating npm dependency scan to fail."
+            exit 1
+          }
+      - name: Scan allows pinned npm dependency with lockfile
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-npm-clean"
+          mkdir -p "$project"
+          cd "$project"
+          cat > package.json <<'JSON'
+          {
+            "name": "safedeps-npm-clean",
+            "version": "1.0.0",
+            "dependencies": {
+              "lodash": "4.17.21"
+            }
+          }
+          JSON
+          npm install --package-lock-only --ignore-scripts
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+      - name: Scan allows pinned npm dependency with lockfile
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-clean"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          @'
+          {
+            "name": "safedeps-npm-clean",
+            "version": "1.0.0",
+            "dependencies": {
+              "lodash": "4.17.21"
+            }
+          }
+          '@ | Set-Content -Path package.json
+          npm install --package-lock-only --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: npm ci lockfile smoke
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-npm-ci"
+          mkdir -p "$project"
+          cd "$project"
+          cat > package.json <<'JSON'
+          {
+            "name": "safedeps-npm-ci",
+            "version": "1.0.0",
+            "dependencies": {
+              "is-number": "7.0.0"
+            }
+          }
+          JSON
+          npm install --package-lock-only --ignore-scripts
+          npm ci --ignore-scripts
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+      - name: npm ci lockfile smoke
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-ci"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          @'
+          {
+            "name": "safedeps-npm-ci",
+            "version": "1.0.0",
+            "dependencies": {
+              "is-number": "7.0.0"
+            }
+          }
+          '@ | Set-Content -Path package.json
+          npm install --package-lock-only --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  runtime-guard-experimental:
+    name: npm runtime guard experimental - ${{ matrix.shell }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: bash
+          - os: windows-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install SafeDeps from checkout
+        shell: bash
+        if: matrix.shell == 'bash'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Install SafeDeps from checkout
+        shell: pwsh
+        if: matrix.shell == 'pwsh'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Install SafeDeps from checkout
+        shell: cmd
+        if: matrix.shell == 'cmd'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+      - name: Bash runtime guard blocks unpinned npm install
+        shell: bash
+        if: matrix.shell == 'bash'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-npm-runtime"
+          mkdir -p "$project"
+          cd "$project"
+          npm init -y
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if npm install lodash; then
+            echo "Expected unpinned npm install to be blocked."
+            exit 1
+          fi
+          npm install lodash@4.17.21 --ignore-scripts
+      - name: PowerShell runtime guard blocks unpinned npm install
+        shell: pwsh
+        if: matrix.shell == 'pwsh'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-runtime"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          npm init -y
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          npm install lodash
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected unpinned npm install to be blocked."
+            exit 1
+          }
+          npm install lodash@4.17.21 --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: CMD runtime guard blocks unpinned npm install
+        shell: cmd
+        if: matrix.shell == 'cmd'
+        run: |
+          set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime"
+          mkdir "%PROJECT%"
+          cd /d "%PROJECT%"
+          npm init -y
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          call .safedeps\activate.bat
+          npm install lodash
+          if %ERRORLEVEL% EQU 0 (
+            echo Expected unpinned npm install to be blocked.
+            exit /b 1
+          )
+          npm install lodash@4.17.21 --ignore-scripts
+          if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%

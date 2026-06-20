@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml)
 [![SafeDeps Policy](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml)
-![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
 ![Release](https://img.shields.io/github/v/release/jaydemks/SafeDeps?display_name=tag)
 
 ![SafeDeps Banner](docs/images/safedeps_banner_2026.png)
@@ -14,6 +14,38 @@ It checks dependency changes before they are installed, committed, or accepted i
 This is useful when developers, scripts, or AI coding agents can add packages to a project.
 
 SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
+
+SafeDeps `0.4.0` is a **Beta Preview**: Python/pip is the primary stable path, npm and NuGet scanning are available, and npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
+
+## 90-second quickstart
+
+```bash
+python -m pip install safedeps
+cd your-project
+safedeps init
+safedeps setup .
+source .safedeps/activate.sh
+```
+
+On Windows PowerShell, use:
+
+```powershell
+python -m pip install safedeps
+cd your-project
+safedeps init
+safedeps setup .
+. .\.safedeps\activate.ps1
+```
+
+Then try the guard:
+
+```bash
+pip install requests
+pip install requests==2.32.3
+safedeps scan . --fail-on HIGH
+```
+
+The unpinned install should be blocked. The pinned install can pass if the project policy and scan allow it.
 
 After installation, configure the guard before relying on protected installs:
 
@@ -46,7 +78,7 @@ Before the install is allowed, SafeDeps scans the project and fails the operatio
 
 ## Current status
 
-SafeDeps is strongest today for Python and pip workflows.
+SafeDeps is strongest today for Python and pip workflows. The current release line is a Beta Preview, not a broad stable guarantee across every package manager.
 
 | Area | Status |
 | --- | --- |
@@ -55,10 +87,16 @@ SafeDeps is strongest today for Python and pip workflows.
 | `python -m pip` runtime guard | Tested |
 | Local web UI | Tested for guard toggles and scan flows |
 | npm scanning | Supported |
-| npm runtime guard | Implemented, still being validated across environments |
+| npm runtime guard | Experimental until OS/shell/npm e2e matrix is green |
 | NuGet/.NET scanning | Supported |
-| NuGet/.NET runtime flows | Implemented, still being validated across environments |
+| NuGet/.NET runtime flows | Experimental until OS/SDK e2e matrix is green |
 | Git submodule checks | Supported |
+
+The detailed support matrix and current non-guarantees are tracked in
+[docs/ECOSYSTEM_SUPPORT.md](docs/ECOSYSTEM_SUPPORT.md) and
+[docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). The threat model is documented in
+[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md). For positioning against adjacent tools, see
+[docs/COMPARISON.md](docs/COMPARISON.md).
 
 PyPI publishing is available:
 
@@ -66,7 +104,7 @@ PyPI publishing is available:
 pip install safedeps
 ```
 
-The npm wrapper and .NET tool wrapper exist in this repository. npm and NuGet publishing are still being finalized.
+The npm wrapper and .NET tool wrapper exist in this repository, but npm and NuGet runtime protection are not production-grade claims yet. Treat them as experimental until their e2e compatibility matrices are green.
 
 ## Install
 
@@ -844,6 +882,7 @@ safedeps doctor .
 ```
 
 This checks the local setup and warns about missing optional files or environment problems.
+It also reports inactive guard state, policy/cache shape issues, missing lockfiles, and missing npm or .NET tooling when the project uses those ecosystems.
 
 ## Uninstall notes
 

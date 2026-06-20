@@ -1,0 +1,142 @@
+name: E2E - NuGet Validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    name: NuGet scan - .NET ${{ matrix.dotnet-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ["8.0.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install SafeDeps from checkout
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Scan blocks floating PackageReference
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-nuget-floating"
+          mkdir -p "$project"
+          cd "$project"
+          dotnet new console --framework net8.0 --no-restore
+          python - <<'PY'
+          from pathlib import Path
+          csproj = next(Path(".").glob("*.csproj"))
+          text = csproj.read_text()
+          text = text.replace(
+              "</Project>",
+              '  <ItemGroup>\n    <PackageReference Include="Newtonsoft.Json" Version="[13.0.1,14.0.0)" />\n  </ItemGroup>\n</Project>',
+          )
+          csproj.write_text(text)
+          PY
+          if python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts; then
+            echo "Expected floating NuGet PackageReference scan to fail."
+            exit 1
+          fi
+      - name: Scan blocks floating PackageReference
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-nuget-floating"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          dotnet new console --framework net8.0 --no-restore
+          $csproj = Get-ChildItem -Filter *.csproj | Select-Object -First 1
+          $text = Get-Content -Raw -Path $csproj.FullName
+          $text = $text.Replace(
+            "</Project>",
+            "  <ItemGroup>`n    <PackageReference Include=`"Newtonsoft.Json`" Version=`"[13.0.1,14.0.0)`" />`n  </ItemGroup>`n</Project>"
+          )
+          Set-Content -Path $csproj.FullName -Value $text
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected floating NuGet PackageReference scan to fail."
+            exit 1
+          }
+      - name: Scan allows pinned PackageReference
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-nuget-pinned"
+          mkdir -p "$project"
+          cd "$project"
+          dotnet new console --framework net8.0 --no-restore
+          python - <<'PY'
+          from pathlib import Path
+          csproj = next(Path(".").glob("*.csproj"))
+          text = csproj.read_text()
+          text = text.replace(
+              "</Project>",
+              '  <ItemGroup>\n    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />\n  </ItemGroup>\n</Project>',
+          )
+          csproj.write_text(text)
+          PY
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+      - name: Scan allows pinned PackageReference
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-nuget-pinned"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          dotnet new console --framework net8.0 --no-restore
+          $csproj = Get-ChildItem -Filter *.csproj | Select-Object -First 1
+          $text = Get-Content -Raw -Path $csproj.FullName
+          $text = $text.Replace(
+            "</Project>",
+            "  <ItemGroup>`n    <PackageReference Include=`"Newtonsoft.Json`" Version=`"13.0.3`" />`n  </ItemGroup>`n</Project>"
+          )
+          Set-Content -Path $csproj.FullName -Value $text
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Scan Directory.Packages.props central package management
+        shell: bash
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-nuget-central"
+          mkdir -p "$project"
+          cd "$project"
+          dotnet new console --framework net8.0 --no-restore
+          cat > Directory.Packages.props <<'XML'
+          <Project>
+            <ItemGroup>
+              <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+            </ItemGroup>
+          </Project>
+          XML
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+      - name: Scan Directory.Packages.props central package management
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-nuget-central"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          dotnet new console --framework net8.0 --no-restore
+          @'
+          <Project>
+            <ItemGroup>
+              <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+            </ItemGroup>
+          </Project>
+          '@ | Set-Content -Path Directory.Packages.props
+          python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

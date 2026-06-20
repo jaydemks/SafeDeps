@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 
+from .guard_backend import GuardBackendFiles, write_guard_backend_files
 from .guard_hooks import (
     _init_project,
     _runtime_guard_pth_line,
@@ -56,7 +57,7 @@ from .guard_state import (
 def cmd_setup(args):
     root = Path(args.path).resolve()
     fail_on = "CRITICAL"
-    real_python = str(Path(sys.executable).resolve())
+    real_python = os.path.abspath(sys.executable)
     official_repo = detect_official_repo_url(root)
     install_scope = getattr(args, "install_scope", None)
     requested_protection_scope = str(getattr(args, "protection_scope", "auto") or "auto").strip().lower()
@@ -151,7 +152,11 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "uninstall" ] || [ "${{1:-}}" = 
         -*) continue ;;
       esac
       case "$tok" in
-        .*|/*|\\*|[A-Za-z]:\\*|git+*|*.whl|*.tar.gz|*.zip) continue ;;
+        .*|/*|\\*|[A-Za-z]:\\*|*.whl|*.tar.gz|*.zip) continue ;;
+        git+*|http://*|https://*|file://*)
+          echo "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+          exit 2
+          ;;
       esac
       echo "$tok" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)" && continue
       if ! echo "$tok" | grep -Fq "=="; then
@@ -180,13 +185,6 @@ fi
 
 exec "${{REAL_PY}}" -m pip "$@"
     """
-    pip_path = posix_bindir / "pip"
-    pip3_path = posix_bindir / "pip3"
-    pip_path.write_text(wrapper, encoding="utf-8", newline="\n")
-    pip3_path.write_text(wrapper, encoding="utf-8", newline="\n")
-    os.chmod(pip_path, 0o755)
-    os.chmod(pip3_path, 0o755)
-
     # Windows wrappers (PowerShell/CMD) so pip install is guarded automatically.
     pip_ps1 = f"""$PipArgs = $args
 $ErrorActionPreference = "Stop"
@@ -255,7 +253,11 @@ $stateProjectPath = ($StateProjectRoot).Replace([char]92, '/').TrimEnd("/")
     if ($tok.StartsWith("-")) {{ continue }}
     $looksLikeWinAbs = ($tok.Length -ge 3 -and [char]::IsLetter($tok[0]) -and $tok[1] -eq ":" -and ($tok[2] -eq "\\" -or $tok[2] -eq "/"))
     if ($tok.StartsWith(".") -or $tok.StartsWith("/") -or $tok.StartsWith("\\") -or $looksLikeWinAbs) {{ continue }}
-    if ($tok.StartsWith("git+") -or $tok.EndsWith(".whl") -or $tok.EndsWith(".tar.gz") -or $tok.EndsWith(".zip")) {{ continue }}
+    if ($tok.EndsWith(".whl") -or $tok.EndsWith(".tar.gz") -or $tok.EndsWith(".zip")) {{ continue }}
+    if ($tok.StartsWith("git+") -or $tok.StartsWith("http://") -or $tok.StartsWith("https://") -or $tok.StartsWith("file://")) {{
+      Write-Host "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+      exit 2
+    }}
     if ($tok -match "(^|\\s)safedeps(\\s|$)") {{ continue }}
     if ($tok -notmatch "==") {{
       Write-Host "Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3)."
@@ -373,6 +375,11 @@ if /I "!_should_guard!"=="1" (
       )
     )
     set "_sdargs=%*"
+    echo !_sdargs! | findstr /I /C:"git+" /C:"http://" /C:"https://" /C:"file://" >nul
+    if not errorlevel 1 (
+      echo Blocked: direct URL/VCS runtime install is not allowed without explicit review.
+      exit /b 2
+    )
     echo !_sdargs! | findstr /I /R "\\<safedeps\\>" >nul
     if not errorlevel 1 (
 {cmd_safe_update_check}
@@ -625,7 +632,11 @@ if [ "${{1:-}}" = "-m" ] && [ "${{2:-}}" = "pip" ]; then
           -*) continue ;;
         esac
         case "$tok" in
-          .*|/*|\\*|[A-Za-z]:\\*|git+*|*.whl|*.tar.gz|*.zip) continue ;;
+          .*|/*|\\*|[A-Za-z]:\\*|*.whl|*.tar.gz|*.zip) continue ;;
+          git+*|http://*|https://*|file://*)
+            echo "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+            exit 2
+            ;;
         esac
         echo "$tok" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)" && continue
         if ! echo "$tok" | grep -Fq "=="; then
@@ -725,7 +736,11 @@ if ($shouldGuard) {{
       if ($tok.StartsWith("-")) {{ continue }}
       $looksLikeWinAbs = ($tok.Length -ge 3 -and [char]::IsLetter($tok[0]) -and $tok[1] -eq ":" -and ($tok[2] -eq "\\" -or $tok[2] -eq "/"))
       if ($tok.StartsWith(".") -or $tok.StartsWith("/") -or $tok.StartsWith("\\") -or $looksLikeWinAbs) {{ continue }}
-      if ($tok.StartsWith("git+") -or $tok.EndsWith(".whl") -or $tok.EndsWith(".tar.gz") -or $tok.EndsWith(".zip")) {{ continue }}
+      if ($tok.EndsWith(".whl") -or $tok.EndsWith(".tar.gz") -or $tok.EndsWith(".zip")) {{ continue }}
+      if ($tok.StartsWith("git+") -or $tok.StartsWith("http://") -or $tok.StartsWith("https://") -or $tok.StartsWith("file://")) {{
+        Write-Host "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
+        exit 2
+      }}
       if ($tok -match "(^|\\s)safedeps(\\s|$)") {{ continue }}
       if ($tok -notmatch "==") {{
         Write-Host "Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3)."
@@ -832,6 +847,11 @@ if "!_should_guard!"=="1" (
       )
       if /I "%~3"=="install" (
         set "_sdargs=%*"
+        echo !_sdargs! | findstr /I /C:"git+" /C:"http://" /C:"https://" /C:"file://" >nul
+        if not errorlevel 1 (
+          echo Blocked: direct URL/VCS runtime install is not allowed without explicit review.
+          exit /b 2
+        )
         echo !_sdargs! | findstr /I /R "\\<safedeps\\>" >nul
         if not errorlevel 1 (
 {py_cmd_safe_update_check}
@@ -849,45 +869,7 @@ if "!_should_guard!"=="1" (
 call "!_real_python!" %*
 exit /b %ERRORLEVEL%
     """
-    (bindir / "pip.ps1").write_text(pip_ps1, encoding="utf-8")
-    (bindir / "pip3.ps1").write_text(pip3_ps1, encoding="utf-8")
-    (bindir / "pip.cmd").write_text(pip_cmd, encoding="utf-8")
-    (bindir / "pip3.cmd").write_text(pip_cmd, encoding="utf-8")
-    (posix_bindir / "npm").write_text(npm_wrapper, encoding="utf-8", newline="\n")
-    os.chmod(posix_bindir / "npm", 0o755)
-    (bindir / "npm.ps1").write_text(npm_ps1, encoding="utf-8")
-    (bindir / "npm.cmd").write_text(npm_cmd, encoding="utf-8")
-    (posix_bindir / "python").write_text(python_wrapper, encoding="utf-8", newline="\n")
-    (posix_bindir / "python3").write_text(python_wrapper, encoding="utf-8", newline="\n")
-    os.chmod(posix_bindir / "python", 0o755)
-    os.chmod(posix_bindir / "python3", 0o755)
-    (bindir / "python.ps1").write_text(python_ps1, encoding="utf-8")
-    (bindir / "python3.ps1").write_text(python_ps1, encoding="utf-8")
-    (bindir / "python.cmd").write_text(python_cmd, encoding="utf-8")
-    (bindir / "python3.cmd").write_text(python_cmd, encoding="utf-8")
-
-    activate = root / ".safedeps" / "activate.sh"
-    activate_path = "$PWD/.safedeps/bin-posix" if _is_windows() else "$PWD/.safedeps/bin"
-    activate.write_text(
-        "#!/usr/bin/env bash\n"
-        f'export PATH="{activate_path}:$PATH"\n'
-        'echo "SafeDeps pip guard active for this shell."\n',
-        encoding="utf-8",
-        newline="\n",
-    )
-    os.chmod(activate, 0o755)
-
-    activate_bat = root / ".safedeps" / "activate.bat"
-    activate_bat.write_text(
-        "@echo off\r\n"
-        "set \"safeDepsBin=%~dp0bin\"\r\n"
-        "set \"PATH=%safeDepsBin%;%PATH%\"\r\n"
-        "echo SafeDeps pip guard active for this CMD session.\r\n",
-        encoding="utf-8",
-    )
-
-    activate_ps1 = root / ".safedeps" / "activate.ps1"
-    activate_ps1.write_text(
+    activate_ps1 = (
         '$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path\n'
         '$projectRoot = Split-Path -Parent $scriptDir\n'
         '$safeDepsBin = Join-Path $projectRoot ".safedeps/bin"\n'
@@ -932,9 +914,32 @@ exit /b %ERRORLEVEL%
         'function global:npm { & $global:__safedeps_npm_cmd @args }\n'
         'function global:python { & $global:__safedeps_py_cmd @args }\n'
         'function global:python3 { & (Join-Path $safeDepsBin "python3.ps1") @args }\n'
-        'Write-Host "SafeDeps pip guard active for this PowerShell session."\n',
-        encoding="utf-8",
+        'Write-Host "SafeDeps pip guard active for this PowerShell session."\n'
     )
+    guard_install = write_guard_backend_files(
+        root,
+        bindir,
+        posix_bindir,
+        GuardBackendFiles(
+            pip_wrapper=wrapper,
+            pip_ps1=pip_ps1,
+            pip3_ps1=pip3_ps1,
+            pip_cmd=pip_cmd,
+            npm_wrapper=npm_wrapper,
+            npm_ps1=npm_ps1,
+            npm_cmd=npm_cmd,
+            python_wrapper=python_wrapper,
+            python_ps1=python_ps1,
+            python_cmd=python_cmd,
+            activate_ps1=activate_ps1,
+        ),
+        windows=_is_windows(),
+    )
+    pip_path = guard_install.pip_path
+    pip3_path = guard_install.pip3_path
+    activate = guard_install.activate
+    activate_bat = guard_install.activate_bat
+    activate_ps1_path = guard_install.activate_ps1
 
     print("SafeDeps setup completed.")
     if official_repo:
@@ -971,7 +976,7 @@ exit /b %ERRORLEVEL%
     print(f"- Protection scope default: {_state['protection_scope']}")
     print(f"- Activate in bash/zsh: source {activate}")
     print(f"- Activate in CMD: {activate_bat}")
-    print(f"- Activate in PowerShell: . {activate_ps1}")
+    print(f"- Activate in PowerShell: . {activate_ps1_path}")
     if interpreter_hook:
         print(f"- Python interpreter guard hook: {interpreter_hook}")
     else:

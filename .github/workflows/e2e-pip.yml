@@ -1,0 +1,247 @@
+name: E2E - pip Guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  bash:
+    name: Bash - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        pip-version: ["latest"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.12"
+            pip-version: "23.3.2"
+          - os: macos-latest
+            python-version: "3.12"
+            pip-version: "23.3.2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install SafeDeps from checkout
+        run: |
+          if [ "${{ matrix.pip-version }}" = "latest" ]; then
+            python -m pip install --upgrade pip
+          else
+            python -m pip install "pip==${{ matrix.pip-version }}"
+          fi
+          python -m pip install -e ".[dev]"
+      - name: Project guard blocks and allows pip installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-pip-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install six; then
+            echo "Expected unpinned pip install to be blocked."
+            exit 1
+          fi
+          pip install six==1.17.0
+      - name: Activated shell blocks unpinned requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-requirements-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          printf "six\n" > requirements.txt
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install -r requirements.txt; then
+            echo "Expected unpinned requirements install to be blocked."
+            exit 1
+          fi
+          printf "six==1.17.0\n" > requirements.txt
+          pip install -r requirements.txt
+      - name: Activated shell blocks python -m pip bypass
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-python-m-pip-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if python -m pip install six; then
+            echo "Expected unpinned python -m pip install to be blocked."
+            exit 1
+          fi
+      - name: Project scope does not block outside project
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-project-scope-e2e"
+          outside="$RUNNER_TEMP/safedeps-project-scope-outside"
+          mkdir -p "$project" "$outside"
+          cd "$project"
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          cd "$outside"
+          pip install six==1.17.0
+      - name: Project venv guard blocks pip installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-venv-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          python -m venv .venv
+          if [ -f ".venv/bin/activate" ]; then
+            source .venv/bin/activate
+          else
+            source .venv/Scripts/activate
+          fi
+          python -m pip install --upgrade pip
+          python -m pip install -e "$GITHUB_WORKSPACE"
+          python -m safedeps.cli setup . --install-scope project --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install six; then
+            echo "Expected unpinned venv pip install to be blocked."
+            exit 1
+          fi
+
+  powershell:
+    name: PowerShell - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on Windows
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        pip-version: ["latest"]
+        include:
+          - python-version: "3.12"
+            pip-version: "23.3.2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install SafeDeps from checkout
+        shell: pwsh
+        run: |
+          if ("${{ matrix.pip-version }}" -eq "latest") {
+            python -m pip install --upgrade pip
+          } else {
+            python -m pip install "pip==${{ matrix.pip-version }}"
+          }
+          python -m pip install -e ".[dev]"
+      - name: Project guard blocks and allows pip installs
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-pip-e2e"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          pip install six
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected unpinned pip install to be blocked."
+            exit 1
+          }
+          pip install six==1.17.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Activated shell blocks unpinned requirements
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-requirements-e2e"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          "six" | Set-Content -Path requirements.txt
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          pip install -r requirements.txt
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected unpinned requirements install to be blocked."
+            exit 1
+          }
+          "six==1.17.0" | Set-Content -Path requirements.txt
+          pip install -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Activated shell blocks python -m pip bypass
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-e2e"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          python -m pip install six
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected unpinned python -m pip install to be blocked."
+            exit 1
+          }
+      - name: Project scope does not block outside project
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-project-scope-e2e"
+          $outside = Join-Path $env:RUNNER_TEMP "safedeps-project-scope-outside"
+          New-Item -ItemType Directory -Force -Path $project, $outside | Out-Null
+          Set-Location $project
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          Set-Location $outside
+          pip install six==1.17.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  cmd:
+    name: CMD - Python 3.12 on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install SafeDeps from checkout
+        shell: cmd
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+      - name: Project guard blocks pip installs
+        shell: cmd
+        run: |
+          set "PROJECT=%RUNNER_TEMP%\safedeps-cmd-pip-e2e"
+          mkdir "%PROJECT%"
+          cd /d "%PROJECT%"
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          call .safedeps\activate.bat
+          pip install six
+          if %ERRORLEVEL% EQU 0 (
+            echo Expected unpinned pip install to be blocked.
+            exit /b 1
+          )
+          pip install six==1.17.0
+          if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+      - name: Project guard blocks requirements installs
+        shell: cmd
+        run: |
+          set "PROJECT=%RUNNER_TEMP%\safedeps-cmd-requirements-e2e"
+          mkdir "%PROJECT%"
+          cd /d "%PROJECT%"
+          echo six>requirements.txt
+          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          call .safedeps\activate.bat
+          pip install -r requirements.txt
+          if %ERRORLEVEL% EQU 0 (
+            echo Expected unpinned requirements install to be blocked.
+            exit /b 1
+          )
+          echo six==1.17.0>requirements.txt
+          pip install -r requirements.txt
+          if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%

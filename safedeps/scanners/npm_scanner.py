@@ -6,8 +6,8 @@ from pathlib import Path
 
 from safedeps.models import Finding
 from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
-from safedeps.scanners.metadata_signals import MetadataSignals, age_finding, churn_finding, maintainer_change_finding
-from safedeps.scanners.typosquat import typosquat_finding
+from safedeps.scanners.metadata_signals import MetadataSignals
+from safedeps.verifiers import verify_package
 
 try:
     import yaml
@@ -19,6 +19,9 @@ BAD_NAME_HINTS = ["crypto", "stealer", "grabber", "token", "discord-token", "pos
 
 class NpmScanner(Scanner):
     manager = "npm"
+    manifests = ("package.json",)
+    lockfiles = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock")
+    supports_runtime_guard = False
 
     def scan(self, root: Path, policy):
         findings: list[Finding] = []
@@ -71,18 +74,7 @@ class NpmScanner(Scanner):
         return findings, components
 
     def _append_supply_chain_signals(self, policy, findings: list[Finding], signals: MetadataSignals, manager: str, name: str, file_ref: str):
-        typo = typosquat_finding(policy, manager, name, file_ref)
-        if typo:
-            findings.append(typo)
-        age = age_finding(policy, manager, name, file_ref, signals)
-        if age:
-            findings.append(age)
-        churn = churn_finding(policy, manager, name, file_ref, signals)
-        if churn:
-            findings.append(churn)
-        maint = maintainer_change_finding(policy, manager, name, file_ref, signals)
-        if maint:
-            findings.append(maint)
+        findings.extend(verify_package(policy, manager, name, file_ref, signals))
 
     def _scan_discovered_lockfiles(self, root: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
         seen: set[Path] = set()

@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable
 
 from . import __version__
 from .constants import SEVERITY_ORDER
 from .models import Finding, ScanResult
+from .policy import Policy
+
+ReportRenderer = Callable[[ScanResult, str], str]
 
 def apply_vulnerability_baseline(root: Path, policy: Policy, findings: list[Finding]) -> list[Finding]:
     if not policy.data.get("enable_vulnerability_baseline", True):
@@ -258,6 +263,45 @@ def to_html_report(result: ScanResult, fail_on: str):
 </html>
 """
 
+
+REPORT_RENDERERS: dict[str, ReportRenderer] = {
+    "sarif": lambda result, _fail_on: json.dumps(to_sarif(result), indent=2),
+    "cyclonedx": lambda result, _fail_on: json.dumps(to_cyclonedx(result), indent=2),
+    "spdx": lambda result, _fail_on: json.dumps(to_spdx(result), indent=2),
+    "html": lambda result, fail_on: to_html_report(result, fail_on),
+}
+
+
+def write_scan_outputs(
+    result: ScanResult,
+    root: Path,
+    out: str,
+    *,
+    fail_on: str,
+    sarif: str = "",
+    cyclonedx: str = "",
+    spdx: str = "",
+    html: str = "",
+) -> Path:
+    outdir = root / out
+    outdir.mkdir(parents=True, exist_ok=True)
+    (outdir / "safedeps-report.json").write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+    (outdir / "safedeps-sbom.json").write_text(json.dumps(result.sbom, indent=2), encoding="utf-8")
+    optional_outputs = {
+        sarif: REPORT_RENDERERS["sarif"],
+        cyclonedx: REPORT_RENDERERS["cyclonedx"],
+        spdx: REPORT_RENDERERS["spdx"],
+        html: REPORT_RENDERERS["html"],
+    }
+    for rel_path, renderer in optional_outputs.items():
+        if not rel_path:
+            continue
+        path = root / rel_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(renderer(result, fail_on), encoding="utf-8")
+    return outdir
+
+
 def _html_escape(value: str):
     text = str(value or "")
     return (text.replace("&", "&amp;")
@@ -283,4 +327,3 @@ def print_summary(result, fail_on, outdir):
         print(f"- {f.severity} {f.manager}/{f.rule}{pkg}{loc}: {f.message}")
         if f.fix: print(f"  fix: {f.fix}")
     print(f"\nArtifacts: {outdir/'safedeps-report.json'} | {outdir/'safedeps-sbom.json'}")
-

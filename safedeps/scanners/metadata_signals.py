@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from safedeps.models import Finding
+from safedeps.scanners.typosquat import typosquat_finding
 
 
 class MetadataSignals:
@@ -105,3 +106,15 @@ def maintainer_change_finding(policy, manager: str, package: str, file_ref: str,
             fix="Review maintainer transfer history and repository ownership before approval.",
         )
     return None
+
+
+def supply_chain_signal_findings(
+    policy,
+    manager: str,
+    package: str,
+    file_ref: str,
+    signals: MetadataSignals,
+) -> list[Finding]:
+    from safedeps.verifiers import verify_package
+
+    return verify_package(policy, manager, package, file_ref, signals)

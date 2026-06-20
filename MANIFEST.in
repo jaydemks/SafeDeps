@@ -1,0 +1,19 @@
+include LICENSE NOTICE README.md SECURITY.md CONTRIBUTING.md
+include MAIN_ROADMAP.md ROADMAP.md RELEASE_NOTES_TEMPLATE.md
+recursive-include docs *.md
+recursive-include tests *.py *.txt
+include examples/bad-project/Bad.csproj
+include examples/bad-project/README.md
+include examples/bad-project/package.json
+include examples/bad-project/requirements.txt
+include examples/ci/README.md
+include examples/ci/azure/azure-pipelines.yml
+include examples/ci/github/safedeps.yml
+include examples/ci/gitlab/.gitlab-ci.yml
+include examples/safe-project/README.md
+include examples/safe-project/Safe.csproj
+include examples/safe-project/package-lock.json
+include examples/safe-project/package.json
+include examples/safe-project/packages.lock.json
+include examples/safe-project/requirements.lock
+include examples/safe-project/requirements.txt

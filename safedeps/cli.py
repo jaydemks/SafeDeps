@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import json
 import subprocess
 from pathlib import Path
@@ -11,6 +10,7 @@ from . import guard as _guard
 from . import runtime as _runtime_mod
 from . import ui_dependencies as _ui_dependencies_mod
 from .constants import RULE_EXPLAINERS, SEVERITY_ORDER
+from .cli_parser import build_parser
 from .dependency_actions import (
     _format_command_output,
     _format_dependency_ui_error,
@@ -307,70 +307,24 @@ def get_current_shell_guard_status(root: Path):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="safedeps", description="Dependency policy gate for safer installs and updates.")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    sub = parser.add_subparsers(dest="cmd", required=True)
-    p_version = sub.add_parser("version", help="Print SafeDeps version")
-    p_version.set_defaults(func=cmd_version)
-    p_help = sub.add_parser("help", help="Show quick usage commands for terminal/cmd/powershell")
-    p_help.set_defaults(func=cmd_help)
-    p_init = sub.add_parser("init", help="Create .safedeps/policy.json")
-    p_init.add_argument("path", nargs="?", default=".")
-    p_init.add_argument("--force", action="store_true")
-    p_init.set_defaults(func=cmd_init)
-    p_scan = sub.add_parser("scan", help="Scan a project before install/update")
-    p_scan.add_argument("path", nargs="?", default=".")
-    p_scan.add_argument("--policy")
-    p_scan.add_argument("--out", default="security-artifacts")
-    p_scan.add_argument("--sarif", default="", help="Optional SARIF output path (relative to scan root).")
-    p_scan.add_argument("--cyclonedx", default="", help="Optional CycloneDX JSON output path (relative to scan root).")
-    p_scan.add_argument("--spdx", default="", help="Optional SPDX JSON output path (relative to scan root).")
-    p_scan.add_argument("--html", default="", help="Optional HTML output path (relative to scan root).")
-    p_scan.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
-    p_scan.add_argument("--online-audit", action="store_true", help="Run ecosystem audit commands when available. Requires network/tooling.")
-    p_scan.set_defaults(func=cmd_scan)
-    p_doctor = sub.add_parser("doctor", help="Validate local SafeDeps setup and metadata cache health")
-    p_doctor.add_argument("path", nargs="?", default=".")
-    p_doctor.set_defaults(func=cmd_doctor)
-    p_explain = sub.add_parser("explain", help="Explain a finding rule and remediation intent")
-    p_explain.add_argument("rule", help="Rule identifier (example: FLOATING_VERSION)")
-    p_explain.set_defaults(func=cmd_explain)
-    p_baseline = sub.add_parser("baseline", help="Create baseline suppression file from scan report")
-    p_baseline.add_argument("path", nargs="?", default=".")
-    p_baseline.add_argument("--report", default="security-artifacts/safedeps-report.json")
-    p_baseline.add_argument("--output", default=".safedeps/vuln-baseline.json")
-    p_baseline.set_defaults(func=cmd_baseline)
-    p_approve = sub.add_parser("approve", help="Add expiring suppression entry to baseline file")
-    p_approve.add_argument("path", nargs="?", default=".")
-    p_approve.add_argument("--manager", required=True)
-    p_approve.add_argument("--rule", required=True)
-    p_approve.add_argument("--package", default="")
-    p_approve.add_argument("--file", default="")
-    p_approve.add_argument("--expires", required=True, help="Expiration date (YYYY-MM-DD)")
-    p_approve.add_argument("--baseline", default=".safedeps/vuln-baseline.json")
-    p_approve.set_defaults(func=cmd_approve)
-    p_ui = sub.add_parser("ui", help="Run local web UI for visual scans")
-    p_ui.add_argument("path", nargs="?", default="")
-    p_ui.add_argument("--host", default="127.0.0.1")
-    p_ui.add_argument("--port", type=int, default=5200)
-    p_ui.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
-    p_ui.add_argument("--install-scope", choices=("auto", "project", "system"), default="auto", help="Override detected SafeDeps install scope for UI testing.")
-    p_ui.add_argument("--open-browser", action="store_true", default=True)
-    p_ui.add_argument("--no-open-browser", dest="open_browser", action="store_false")
-    p_ui.set_defaults(func=cmd_ui)
-    p_ui_shortcut = sub.add_parser("ui-shortcut", help="Create Windows desktop .bat launcher for SafeDeps UI")
-    p_ui_shortcut.set_defaults(func=cmd_ui_shortcut)
-    p_setup = sub.add_parser("setup", help="One-time project setup for guarded pip install")
-    p_setup.add_argument("path", nargs="?", default=".")
-    p_setup.add_argument("--fail-on", choices=list(SEVERITY_ORDER), default="HIGH")
-    p_setup.add_argument("--force", action="store_true")
-    p_setup.add_argument("--install-scope", choices=("auto", "project", "system"), default="auto", help="Override detected SafeDeps install scope for guard setup.")
-    p_setup.add_argument("--protection-scope", choices=("auto", "project", "global"), default="auto", help="Set the guard protection scope during setup.")
-    p_setup.set_defaults(func=cmd_setup)
-    p_guard_cleanup = sub.add_parser("guard-cleanup", help=argparse.SUPPRESS)
-    p_guard_cleanup.add_argument("path", nargs="?", default=".")
-    p_guard_cleanup.add_argument("--remove-project-artifacts", action="store_true")
-    p_guard_cleanup.set_defaults(func=cmd_guard_cleanup)
+    parser = build_parser(
+        version=__version__,
+        severity_choices=SEVERITY_ORDER,
+        handlers={
+            "version": cmd_version,
+            "help": cmd_help,
+            "init": cmd_init,
+            "scan": cmd_scan,
+            "doctor": cmd_doctor,
+            "explain": cmd_explain,
+            "baseline": cmd_baseline,
+            "approve": cmd_approve,
+            "ui": cmd_ui,
+            "ui-shortcut": cmd_ui_shortcut,
+            "setup": cmd_setup,
+            "guard-cleanup": cmd_guard_cleanup,
+        },
+    )
     args = parser.parse_args(argv)
     return args.func(args)
 

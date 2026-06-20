@@ -3,14 +3,20 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from safedeps.models import Finding
+from safedeps.models import Finding, PackageTarget
 
 
 class Scanner:
     manager = "generic"
+    manifests: tuple[str, ...] = ()
+    lockfiles: tuple[str, ...] = ()
+    supports_runtime_guard = False
 
     def scan(self, root: Path, policy) -> tuple[list[Finding], list[dict]]:
         return [], []
+
+    def component_from_target(self, target: PackageTarget) -> dict[str, str]:
+        return target.to_component()
 
 
 SKIP_DIR_NAMES = {
