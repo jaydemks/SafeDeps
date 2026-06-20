@@ -60,13 +60,34 @@ Suggested release ladder:
 
 Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release candidate is ready.
 
+### 0.4.1 Completed: CI Truth Hardening
+
+Status: completed on `main` after the post-`v0.4.0` hardening commits. Keep `v0.4.0` unchanged until a future release is intentionally cut.
+
+- Stable CI gates are now truthfully blocking instead of green because of broad `continue-on-error` masking.
+- Windows e2e failures were fixed rather than hidden, including PowerShell, CMD, and pip guard shell-wrapper paths.
+- `e2e-pip.yml` is promoted from diagnostic behavior to required validation for the supported pip guard paths.
+- GitHub Actions were updated away from deprecated Node 20 action versions.
+- npm and NuGet runtime/publishing claims remain deliberately limited until their own validation work is complete.
+
 ### 0.4.1 Local Work Plan
 
-- Inventory every `continue-on-error` and classify it as stable-required or diagnostic.
-- Reproduce the failing Windows/pip/e2e behavior locally or from GitHub logs before changing workflow policy.
-- Fix the failure first, then remove or narrow `continue-on-error`.
+- [x] Inventory every `continue-on-error` and classify it as stable-required or diagnostic.
+- [x] Reproduce the failing Windows/pip/e2e behavior locally or from GitHub logs before changing workflow policy.
+- [x] Fix the failure first, then remove or narrow `continue-on-error`.
 - Keep npm/NuGet runtime and registry publishing diagnostic/experimental until tested independently.
 - Run local gates before any commit: `make checks`, version preflight, package build, `twine check`, and representative CLI/UI smoke.
+
+### 0.4.2 Next: pip Guard Compatibility Expansion
+
+Focus: make Python/pip coverage closer to SCFW-level evidence by expanding required cases without broadening ecosystem claims prematurely.
+
+- Add required e2e coverage for constraints files.
+- Add required e2e coverage for editable local installs.
+- Add required e2e coverage for local path installs.
+- Add required e2e coverage for direct URL or wheel-style installs where practical in CI.
+- Add explicit `--index-url` / `--extra-index-url` runtime behavior tests.
+- Expand the pip-version matrix gradually only after the new behavior cases are green.
 
 ## Post-v0.4 Backlog
 

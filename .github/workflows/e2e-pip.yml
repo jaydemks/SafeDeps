@@ -67,6 +67,23 @@ jobs:
           fi
           printf "six==1.17.0\n" > requirements.txt
           pip install -r requirements.txt
+      - name: Activated shell blocks unpinned constraints
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/safedeps-constraints-e2e"
+          mkdir -p "$project"
+          cd "$project"
+          printf "urllib3\n" > constraints.txt
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          source ./.safedeps/activate.sh
+          hash -r
+          if pip install -c constraints.txt six==1.17.0; then
+            echo "Expected unpinned constraints install to be blocked."
+            exit 1
+          fi
+          printf "urllib3==2.2.3\n" > constraints.txt
+          pip install -c constraints.txt six==1.17.0
       - name: Activated shell blocks python -m pip bypass
         shell: bash
         run: |
@@ -178,6 +195,25 @@ jobs:
           "six==1.17.0" | Set-Content -Path requirements.txt
           pip install -r requirements.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Activated shell blocks unpinned constraints
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
+          $project = Join-Path $env:RUNNER_TEMP "safedeps-constraints-e2e"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Set-Location $project
+          "urllib3" | Set-Content -Path constraints.txt
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          . .\.safedeps\activate.ps1
+          pip install -c constraints.txt six==1.17.0
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Expected unpinned constraints install to be blocked."
+            exit 1
+          }
+          "urllib3==2.2.3" | Set-Content -Path constraints.txt
+          pip install -c constraints.txt six==1.17.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Activated shell blocks python -m pip bypass
         shell: pwsh
         run: |
@@ -256,4 +292,21 @@ jobs:
           )
           echo six==1.17.0>requirements.txt
           call pip install -r requirements.txt
+          if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+      - name: Project guard blocks constraints installs
+        shell: cmd
+        run: |
+          set "PROJECT=%RUNNER_TEMP%\safedeps-cmd-constraints-e2e"
+          mkdir "%PROJECT%"
+          cd /d "%PROJECT%"
+          echo urllib3>constraints.txt
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
+          call .safedeps\activate.bat
+          call pip install -c constraints.txt six==1.17.0
+          if %ERRORLEVEL% EQU 0 (
+            echo Expected unpinned constraints install to be blocked.
+            exit /b 1
+          )
+          echo urllib3==2.2.3>constraints.txt
+          call pip install -c constraints.txt six==1.17.0
           if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
