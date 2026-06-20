@@ -56,7 +56,7 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Run pip guard bash e2e suite
         shell: bash
-        run: scripts/e2e/pip_guard_bash.sh
+        run: bash scripts/e2e/pip_guard_bash.sh
 
   powershell:
     name: PowerShell - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on Windows
@@ -85,7 +85,7 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Run pip guard PowerShell e2e suite
         shell: pwsh
-        run: .\scripts\e2e\pip_guard_pwsh.ps1
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\e2e\pip_guard_pwsh.ps1
 
   cmd:
     name: CMD - Python 3.12 on Windows
@@ -102,4 +102,4 @@ jobs:
           python -m pip install -e .[dev]
       - name: Run pip guard CMD e2e suite
         shell: cmd
-        run: call scripts\e2e\pip_guard_cmd.bat
+        run: call .\scripts\e2e\pip_guard_cmd.bat
