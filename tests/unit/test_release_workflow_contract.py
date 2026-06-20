@@ -61,7 +61,7 @@ def test_release_manifest_collects_python_npm_and_nuget_artifacts(tmp_path):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("artifact", encoding="utf-8")
 
-    assert [str(path.relative_to(tmp_path)) for path in collect_files(tmp_path)] == [
+    assert [path.relative_to(tmp_path).as_posix() for path in collect_files(tmp_path)] == [
         "artifacts/dotnet/SafeDeps.Tool.1.0.0.nupkg",
         "dist/safedeps-1.0.0-py3-none-any.whl",
         "dist/safedeps-1.0.0.tar.gz",
