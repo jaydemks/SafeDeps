@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -28,6 +30,9 @@ jobs:
           if [ -z "$EXPECTED_VERSION" ]; then
             EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
           fi
+          if [ "${{ inputs.publish }}" = "true" ]; then
+            export GITHUB_REF_NAME="v${EXPECTED_VERSION}"
+          fi
           python scripts/release/preflight.py --expected-version "$EXPECTED_VERSION" ${{ (inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v')) && '--require-tag' || '' }}
 
   build-python:
@@ -35,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -55,6 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -73,6 +82,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -103,6 +114,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
