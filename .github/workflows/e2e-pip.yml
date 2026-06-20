@@ -23,8 +23,8 @@ jobs:
             python-version: "3.12"
             pip-version: "23.3.2"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install SafeDeps from checkout
@@ -42,7 +42,7 @@ jobs:
           project="$RUNNER_TEMP/safedeps-pip-e2e"
           mkdir -p "$project"
           cd "$project"
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           source ./.safedeps/activate.sh
           hash -r
           if pip install six; then
@@ -58,7 +58,7 @@ jobs:
           mkdir -p "$project"
           cd "$project"
           printf "six\n" > requirements.txt
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           source ./.safedeps/activate.sh
           hash -r
           if pip install -r requirements.txt; then
@@ -74,7 +74,7 @@ jobs:
           project="$RUNNER_TEMP/safedeps-python-m-pip-e2e"
           mkdir -p "$project"
           cd "$project"
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           source ./.safedeps/activate.sh
           hash -r
           if python -m pip install six; then
@@ -89,7 +89,7 @@ jobs:
           outside="$RUNNER_TEMP/safedeps-project-scope-outside"
           mkdir -p "$project" "$outside"
           cd "$project"
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           source ./.safedeps/activate.sh
           hash -r
           cd "$outside"
@@ -109,7 +109,7 @@ jobs:
           fi
           python -m pip install --upgrade pip
           python -m pip install -e "$GITHUB_WORKSPACE"
-          python -m safedeps.cli setup . --install-scope project --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope project --protection-scope project
           source ./.safedeps/activate.sh
           hash -r
           if pip install six; then
@@ -129,8 +129,8 @@ jobs:
           - python-version: "3.12"
             pip-version: "23.3.2"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install SafeDeps from checkout
@@ -150,7 +150,7 @@ jobs:
           $project = Join-Path $env:RUNNER_TEMP "safedeps-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           . .\.safedeps\activate.ps1
           pip install six
           if ($LASTEXITCODE -eq 0) {
@@ -168,7 +168,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
           "six" | Set-Content -Path requirements.txt
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           . .\.safedeps\activate.ps1
           pip install -r requirements.txt
           if ($LASTEXITCODE -eq 0) {
@@ -186,7 +186,7 @@ jobs:
           $project = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           . .\.safedeps\activate.ps1
           python -m pip install six
           if ($LASTEXITCODE -eq 0) {
@@ -200,7 +200,7 @@ jobs:
           $outside = Join-Path $env:RUNNER_TEMP "safedeps-project-scope-outside"
           New-Item -ItemType Directory -Force -Path $project, $outside | Out-Null
           Set-Location $project
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           . .\.safedeps\activate.ps1
           Set-Location $outside
           pip install six==1.17.0
@@ -210,8 +210,8 @@ jobs:
     name: CMD - Python 3.12 on Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install SafeDeps from checkout
@@ -225,7 +225,7 @@ jobs:
           set "PROJECT=%RUNNER_TEMP%\safedeps-cmd-pip-e2e"
           mkdir "%PROJECT%"
           cd /d "%PROJECT%"
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           call .safedeps\activate.bat
           pip install six
           if %ERRORLEVEL% EQU 0 (
@@ -241,7 +241,7 @@ jobs:
           mkdir "%PROJECT%"
           cd /d "%PROJECT%"
           echo six>requirements.txt
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
+          python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           call .safedeps\activate.bat
           pip install -r requirements.txt
           if %ERRORLEVEL% EQU 0 (

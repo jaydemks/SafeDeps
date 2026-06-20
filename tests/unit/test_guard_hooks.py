@@ -26,7 +26,7 @@ def test_runtime_guard_pth_helpers_escape_inputs(tmp_path):
 
     assert line.startswith("import sys; exec(")
     assert "safedeps.runtime_guard" in line
-    assert str(tmp_path) in line
+    assert str(tmp_path).replace("\\", "/") in line.replace("\\\\", "/").replace("\\", "/")
     assert guard_hooks._runtime_guard_pth_name() in guard_hooks._runtime_guard_pth_names()
 
 

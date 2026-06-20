@@ -1,5 +1,4 @@
 from io import BytesIO
-from pathlib import PosixPath
 from types import SimpleNamespace
 
 import pytest
@@ -85,10 +84,11 @@ def test_cmd_ui_shortcut_is_windows_only(monkeypatch, capsys):
 
 
 def test_cmd_ui_shortcut_writes_windows_launcher(monkeypatch, tmp_path, capsys):
+    host_path_cls = type(tmp_path)
     workspace = tmp_path / "workspace"
     userprofile = tmp_path / "profile"
     monkeypatch.setattr(ui_server.os, "name", "nt")
-    monkeypatch.setattr(ui_server, "Path", PosixPath)
+    monkeypatch.setattr(ui_server, "Path", host_path_cls)
     monkeypatch.setenv("USERPROFILE", str(userprofile))
     monkeypatch.setattr(ui_server, "_default_ui_workspace", lambda: workspace)
 

@@ -1846,7 +1846,9 @@ def test_scan_bad_project_fixture_snapshot(capsys):
         assert expected_line in normalized
 
 
-def test_setup_generates_strict_project_guard_wrappers(tmp_path):
+def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
+    monkeypatch.setattr(guard_mod, "_is_windows", lambda: False)
+
     code = main(["setup", str(tmp_path)])
     assert code == 0
 
@@ -1917,6 +1919,19 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path):
     assert "SafeDeps pip guard active for this CMD session." in activate_bat
     assert 'REAL_PY="' in npm_wrapper
     assert 'scope="global"' in npm_wrapper
+
+
+def test_setup_uses_requested_fail_on_threshold(tmp_path):
+    code = main(["setup", str(tmp_path), "--fail-on", "HIGH"])
+
+    assert code == 0
+
+    pip_wrapper = (tmp_path / ".safedeps" / "bin" / "pip").read_text(encoding="utf-8")
+    pip_ps1 = (tmp_path / ".safedeps" / "bin" / "pip.ps1").read_text(encoding="utf-8")
+    pip_cmd = (tmp_path / ".safedeps" / "bin" / "pip.cmd").read_text(encoding="utf-8")
+    assert "--fail-on HIGH" in pip_wrapper
+    assert "--fail-on HIGH" in pip_ps1
+    assert "--fail-on HIGH" in pip_cmd
 
 
 def test_setup_windows_keeps_cmd_bin_free_of_extensionless_wrappers(monkeypatch, tmp_path):

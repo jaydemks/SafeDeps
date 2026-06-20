@@ -56,7 +56,7 @@ from .guard_state import (
 
 def cmd_setup(args):
     root = Path(args.path).resolve()
-    fail_on = "CRITICAL"
+    fail_on = str(getattr(args, "fail_on", "HIGH") or "HIGH").upper()
     real_python = os.path.abspath(sys.executable)
     official_repo = detect_official_repo_url(root)
     install_scope = getattr(args, "install_scope", None)

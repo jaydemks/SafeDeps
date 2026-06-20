@@ -9,8 +9,8 @@ jobs:
   dependency-policy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Check cross-package version consistency
@@ -38,7 +38,7 @@ jobs:
       - name: Validate compliance artifacts
         run: python scripts/validate_artifacts.py examples/safe-project/security-artifacts
       - name: Upload security artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: safedeps-security-artifacts

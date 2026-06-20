@@ -34,7 +34,8 @@ def cmd_ui_shortcut(args):
         return 2
     workspace = _default_ui_workspace()
     workspace.mkdir(parents=True, exist_ok=True)
-    desktop = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Desktop"
+    user_profile = os.environ.get("USERPROFILE") or str(Path.home())
+    desktop = Path(user_profile) / "Desktop"
     desktop.mkdir(parents=True, exist_ok=True)
     shortcut_path = desktop / "SafeDeps UI.bat"
     content = (

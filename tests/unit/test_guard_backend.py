@@ -1,4 +1,5 @@
 import stat
+import os
 
 from safedeps.guard_backend import GuardBackendFiles, write_guard_backend_files
 
@@ -20,6 +21,8 @@ def _files() -> GuardBackendFiles:
 
 
 def _is_executable(path):
+    if os.name == "nt":
+        return path.exists()
     return bool(path.stat().st_mode & stat.S_IXUSR)
 
 
