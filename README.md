@@ -104,7 +104,7 @@ PyPI publishing is available:
 pip install safedeps
 ```
 
-The npm wrapper and .NET tool wrapper exist in this repository, but npm and NuGet runtime protection are not production-grade claims yet. Treat them as experimental until their e2e compatibility matrices are green.
+The npm wrapper and .NET tool wrapper exist in this repository, but they are not published to the public npm or NuGet registries in this release. npm and NuGet runtime protection are not production-grade claims yet. Treat them as experimental until their e2e compatibility matrices are green.
 
 ## Install
 
