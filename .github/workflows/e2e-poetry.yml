@@ -1,0 +1,27 @@
+name: E2E - Poetry Lock Validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  poetry-lock:
+    name: Poetry ${{ matrix.poetry-version }} lock scan on Python 3.12
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        poetry-version: ["1.7.1", "1.8.5", "2.0.1", "2.1.4", "2.2.1", "2.3.4", "2.4.1"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install SafeDeps and Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install "poetry==${{ matrix.poetry-version }}"
+      - name: Run Poetry lock scan e2e
+        run: python scripts/e2e/poetry_lock_scan.py
