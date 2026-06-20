@@ -120,17 +120,17 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download Python dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-wrapper-tarball
           path: packages/npm-wrapper/
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dotnet-tool-nupkg
           path: artifacts/dotnet/
@@ -155,7 +155,7 @@ jobs:
       id-token: write
     steps:
       - name: Download Python dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist/
@@ -192,7 +192,7 @@ jobs:
       contents: read
     steps:
       - name: Download npm tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
@@ -235,7 +235,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
@@ -262,22 +262,22 @@ jobs:
       contents: read
     steps:
       - name: Download Python dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
       - name: Download release manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-manifest
           path: release-artifacts/
@@ -301,22 +301,22 @@ jobs:
         with:
           ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - name: Download Python dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
       - name: Download NuGet package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
       - name: Download release manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-manifest
           path: release-artifacts/
