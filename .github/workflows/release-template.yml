@@ -135,7 +135,7 @@ jobs:
           path: release-artifacts/release-manifest.json
 
   publish-pypi:
-    if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ inputs.publish == 'true' }}
     needs: [build-python, release-manifest]
     runs-on: ubuntu-latest
     permissions:
@@ -171,7 +171,7 @@ jobs:
           echo "PYPI_API_TOKEN is not configured. Skipping PyPI publish."
 
   publish-npm:
-    if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ inputs.publish == 'true' }}
     needs: [build-npm-wrapper, release-manifest]
     runs-on: ubuntu-latest
     permissions:
@@ -217,7 +217,7 @@ jobs:
           echo "NPM_TOKEN is not configured. Skipping npm publish."
 
   publish-nuget:
-    if: ${{ inputs.publish == 'true' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ inputs.publish == 'true' }}
     needs: [build-dotnet-tool, release-manifest]
     runs-on: ubuntu-latest
     steps:
@@ -279,7 +279,7 @@ jobs:
 
   github-release:
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    needs: [release-manifest, publish-pypi, publish-npm, publish-nuget, attest-build-provenance]
+    needs: [release-manifest, attest-build-provenance]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -53,6 +53,7 @@ jobs:
         shell: pwsh
         if: runner.os == 'Windows'
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-nuget-floating"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project

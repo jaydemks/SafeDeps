@@ -51,6 +51,7 @@ jobs:
         shell: pwsh
         if: runner.os == 'Windows'
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-scan"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
@@ -212,6 +213,7 @@ jobs:
         shell: pwsh
         if: matrix.shell == 'pwsh'
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-runtime"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project

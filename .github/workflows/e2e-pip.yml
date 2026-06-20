@@ -145,6 +145,7 @@ jobs:
       - name: Project guard blocks and allows pip installs
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
@@ -160,6 +161,7 @@ jobs:
       - name: Activated shell blocks unpinned requirements
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-requirements-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
@@ -177,6 +179,7 @@ jobs:
       - name: Activated shell blocks python -m pip bypass
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
           Set-Location $project
