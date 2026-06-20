@@ -67,14 +67,14 @@ def test_package_tokens_skip_equals_style_option_values():
     assert runtime_guard._package_tokens(args) == ["requests==2.32.3"]
 
 
-def test_validate_install_args_blocks_untrusted_runtime_index(tmp_path):
+def test_validate_package_source_args_blocks_untrusted_runtime_index(tmp_path):
     (tmp_path / ".safedeps").mkdir()
     (tmp_path / ".safedeps" / "policy.json").write_text(
         json.dumps({"allowed_registries": {"pip": ["https://pypi.org/simple"]}}),
         encoding="utf-8",
     )
 
-    message = runtime_guard.validate_install_args(
+    message = runtime_guard.validate_package_source_args(
         tmp_path,
         ["--index-url", "https://evil.example/simple", "six==1.17.0"],
     )
@@ -82,26 +82,41 @@ def test_validate_install_args_blocks_untrusted_runtime_index(tmp_path):
     assert message == "Blocked: pip index not in allowlist: https://evil.example/simple"
 
 
-def test_validate_install_args_allows_approved_runtime_index(tmp_path):
+def test_validate_package_source_args_blocks_untrusted_extra_index(tmp_path):
     (tmp_path / ".safedeps").mkdir()
     (tmp_path / ".safedeps" / "policy.json").write_text(
         json.dumps({"allowed_registries": {"pip": ["https://pypi.org/simple"]}}),
         encoding="utf-8",
     )
 
-    assert runtime_guard.validate_install_args(
+    message = runtime_guard.validate_package_source_args(
+        tmp_path,
+        ["--extra-index-url=https://evil.example/simple", "six==1.17.0"],
+    )
+
+    assert message == "Blocked: pip index not in allowlist: https://evil.example/simple"
+
+
+def test_validate_package_source_args_allows_approved_runtime_index(tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    (tmp_path / ".safedeps" / "policy.json").write_text(
+        json.dumps({"allowed_registries": {"pip": ["https://pypi.org/simple"]}}),
+        encoding="utf-8",
+    )
+
+    assert runtime_guard.validate_package_source_args(
         tmp_path,
         ["--index-url=https://pypi.org/simple/", "six==1.17.0"],
     ) is None
 
 
-def test_validate_install_args_allows_local_and_editable_installs(tmp_path):
-    assert runtime_guard.validate_install_args(tmp_path, ["."]) is None
-    assert runtime_guard.validate_install_args(tmp_path, ["-e", "."]) is None
+def test_validate_package_source_args_allows_local_and_editable_installs(tmp_path):
+    assert runtime_guard.validate_package_source_args(tmp_path, ["."]) is None
+    assert runtime_guard.validate_package_source_args(tmp_path, ["-e", "."]) is None
 
 
-def test_validate_install_args_blocks_direct_url(tmp_path):
-    message = runtime_guard.validate_install_args(tmp_path, ["demo @ https://example.test/demo-1.0.0.tar.gz"])
+def test_validate_package_source_args_blocks_direct_url(tmp_path):
+    message = runtime_guard.validate_package_source_args(tmp_path, ["demo @ https://example.test/demo-1.0.0.tar.gz"])
 
     assert message == "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
 
@@ -318,6 +333,28 @@ def test_run_blocks_python_module_pip_shape(tmp_path, monkeypatch):
 
     assert exits == [2]
     assert "unpinned runtime install" in "".join(messages)
+
+
+def test_run_blocks_risky_pip_download_sources(tmp_path, monkeypatch):
+    state_file = tmp_path / ".safedeps" / "guard-state.json"
+    state_file.parent.mkdir()
+    state_file.write_text(
+        json.dumps({"auto_guard": True, "protection_scope": "project", "project_root": str(tmp_path)}),
+        encoding="utf-8",
+    )
+    messages = []
+    exits = []
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
+    monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "download", "demo @ https://example.test/demo-1.0.0.tar.gz"])
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
+    monkeypatch.setattr(runtime_guard.sys, "stderr", SimpleNamespace(write=messages.append, flush=lambda: None))
+    monkeypatch.setattr(runtime_guard.os, "_exit", lambda code: exits.append(code))
+
+    runtime_guard.run(str(tmp_path), expected_venv="/venv")
+
+    assert exits == [2]
+    assert "direct URL/VCS runtime install" in "".join(messages)
 
 
 def test_run_blocks_uninstall_except_safedeps_self_uninstall(tmp_path, monkeypatch):

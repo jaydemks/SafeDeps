@@ -179,7 +179,7 @@ def _untrusted_index_message(root: Path, args: list[str]) -> str | None:
     return None
 
 
-def validate_install_args(root: Path, args: list[str]) -> str | None:
+def validate_package_source_args(root: Path, args: list[str]) -> str | None:
     registry_message = _untrusted_index_message(root, args)
     if registry_message:
         return registry_message
@@ -280,15 +280,14 @@ def run(project_root: str, expected_venv: str = "", official_repo: str = "") -> 
             return
         _block("Blocked: python runtime pip uninstall is disabled while SafeDeps guard is active.")
 
-    if subcommand == "install":
-        install_message = validate_install_args(root, package_args)
-        if install_message:
-            _block(install_message)
-
     if subcommand in {"install", "download"} and _contains_safedeps(package_args):
         joined = " ".join(package_args)
         if not official_repo or official_repo.lower() not in joined.lower():
             _block("Blocked: SafeDeps updates are allowed only from official Git source.")
+    elif subcommand in {"install", "download"}:
+        install_message = validate_package_source_args(root, package_args)
+        if install_message:
+            _block(install_message)
 
     fail_on = str(state.get("fail_on") or "HIGH").upper()
     _run_scan_or_block(fail_on)

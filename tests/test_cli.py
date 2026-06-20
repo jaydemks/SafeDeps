@@ -1885,8 +1885,8 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_ps1
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_cmd
     direct_url_message = "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
-    assert "runtime_guard.validate_install_args" in pip_wrapper
-    assert "runtime_guard.validate_install_args" in python_wrapper
+    assert "runtime_guard.validate_package_source_args" in pip_wrapper
+    assert "runtime_guard.validate_package_source_args" in python_wrapper
     for wrapper_text in (pip_ps1, python_ps1, pip_cmd, python_cmd):
         assert direct_url_message in wrapper_text
     assert "setlocal EnableExtensions EnableDelayedExpansion" in pip_cmd

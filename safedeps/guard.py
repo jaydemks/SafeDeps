@@ -142,8 +142,10 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "uninstall" ] || [ "${{1:-}}" = 
     echo "Blocked: pip uninstall is disabled while SafeDeps guard is active."
     exit 2
   fi
-  if [ "${{1:-}}" = "install" ]; then
+  if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "download" ]; then
+    pip_command="${{1:-}}"
     shift
+    if ! echo "$*" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
     if ! "${{REAL_PY}}" - "$PWD" "$@" <<'PY'
 import sys
 from pathlib import Path
@@ -152,7 +154,7 @@ from safedeps import runtime_guard
 
 root = Path(sys.argv[1])
 args = sys.argv[2:]
-message = runtime_guard.validate_install_args(root, args)
+message = runtime_guard.validate_package_source_args(root, args)
 if message:
     print(message, file=sys.stderr)
     sys.exit(2)
@@ -160,7 +162,8 @@ PY
     then
       exit 2
     fi
-    set -- install "$@"
+    fi
+    set -- "$pip_command" "$@"
   fi
   if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "download" ]; then
     ARGS_STR="$*"
@@ -616,8 +619,9 @@ if [ "${{1:-}}" = "-m" ] && [ "${{2:-}}" = "pip" ]; then
     echo "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active."
     exit 2
   fi
-  if [ "$sub" = "install" ]; then
+  if [ "$sub" = "install" ] || [ "$sub" = "download" ]; then
       install_args=("${{@:4}}")
+      if ! echo "$*" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
       if ! "${{REAL_PY}}" - "$PWD" "${{install_args[@]}}" <<'PY'
 import sys
 from pathlib import Path
@@ -626,13 +630,14 @@ from safedeps import runtime_guard
 
 root = Path(sys.argv[1])
 args = sys.argv[2:]
-message = runtime_guard.validate_install_args(root, args)
+message = runtime_guard.validate_package_source_args(root, args)
 if message:
     print(message, file=sys.stderr)
     sys.exit(2)
 PY
       then
         exit 2
+      fi
       fi
     fi
     ARGS_STR="$*"

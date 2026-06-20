@@ -87,7 +87,8 @@ Focus: make Python/pip coverage closer to SCFW-level evidence by expanding requi
 - [x] Add required e2e coverage for local path installs.
 - [x] Add required e2e coverage for direct URL installs where practical in CI.
 - [x] Add explicit `--index-url` runtime behavior tests.
-- Add explicit `--extra-index-url` runtime behavior tests.
+- [x] Add explicit `--extra-index-url` runtime behavior tests.
+- [x] Add required `pip download` source-policy coverage for direct URLs and untrusted extra indexes.
 - Expand the pip-version matrix gradually only after the new behavior cases are green.
 
 ## Post-v0.4 Backlog

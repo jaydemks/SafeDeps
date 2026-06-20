@@ -102,6 +102,18 @@ jobs:
             echo "Expected untrusted pip index install to be blocked."
             exit 1
           fi
+          if pip install --extra-index-url https://evil.example/simple six==1.17.0; then
+            echo "Expected untrusted extra pip index install to be blocked."
+            exit 1
+          fi
+          if pip download "demo @ https://example.test/demo-1.0.0.tar.gz"; then
+            echo "Expected direct URL download to be blocked."
+            exit 1
+          fi
+          if pip download --extra-index-url https://evil.example/simple six==1.17.0; then
+            echo "Expected untrusted extra pip index download to be blocked."
+            exit 1
+          fi
       - name: Activated shell allows local path and editable installs
         shell: bash
         run: |
