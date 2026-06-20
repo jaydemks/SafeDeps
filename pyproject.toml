@@ -52,7 +52,7 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E9", "F401", "F811", "F821", "F841", "B904", "C4", "I", "PIE", "PTH", "RET", "SIM", "UP", "RUF022"]
+select = ["E9", "F401", "F811", "F821", "F841", "B904", "C4", "I", "N", "PIE", "PTH", "RET", "SIM", "UP", "RUF022"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -70,6 +70,10 @@ show_missing = true
 python_version = "3.10"
 ignore_missing_imports = true
 warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
 
 [[tool.mypy.overrides]]
 module = "safedeps.guard_state"

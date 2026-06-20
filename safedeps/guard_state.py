@@ -97,7 +97,7 @@ def _get_user_path_entries_windows():
     if not _is_windows():
         return []
     try:
-        import winreg  # type: ignore
+        import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_READ) as key:
             raw, _ = winreg.QueryValueEx(key, "Path")
             return [p for p in str(raw).split(";") if p] if raw else []
@@ -108,7 +108,7 @@ def _write_user_path_entries_windows(entries: list[str]):
     if not _is_windows():
         return False
     try:
-        import winreg  # type: ignore
+        import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_SET_VALUE) as key:
             winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, ";".join(entries))
         return True
@@ -119,7 +119,7 @@ def _get_cmd_autorun_windows():
     if not _is_windows():
         return ""
     try:
-        import winreg  # type: ignore
+        import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Command Processor", 0, winreg.KEY_READ) as key:
             raw, _ = winreg.QueryValueEx(key, "AutoRun")
             return str(raw or "")
@@ -130,7 +130,7 @@ def _write_cmd_autorun_windows(value: str):
     if not _is_windows():
         return False
     try:
-        import winreg  # type: ignore
+        import winreg
         with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Command Processor", 0, winreg.KEY_SET_VALUE) as key:
             if value.strip():
                 winreg.SetValueEx(key, "AutoRun", 0, winreg.REG_EXPAND_SZ, value)

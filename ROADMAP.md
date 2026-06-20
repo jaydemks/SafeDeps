@@ -105,14 +105,15 @@ Status: completed before `0.4.3`.
 - [x] Keep `.github/workflows/e2e-pip.yml` focused on checkout, Python/pip matrix setup, and calling the e2e scripts.
 - Keep future e2e workflows human-readable: named scripts, named test sections, no large inline shell blocks unless the logic is truly one-off.
 
-### 0.4.3 In Progress: Static Analysis Hardening
+### 0.4.3 Completed: Static Analysis Hardening
 
-Focus: make quality checks catch real defects while avoiding a noisy one-shot migration.
+Status: completed locally after passing `make checks`; verify GitHub Actions after push.
 
 - [x] Remove `ignore_errors = true` from mypy.
 - [x] Expand Ruff from syntax-only checks to unused imports, redefinitions, unused variables, exception chaining, and sorted public exports.
 - [x] Add import sorting, pyupgrade, and simplify Ruff gates with passing fixes.
 - [x] Add comprehensions, pathlib, pie, and return-style Ruff gates with passing fixes.
+- [x] Add naming Ruff gate and stricter mypy warnings for redundant casts, unused ignores, implicit optionals, and equality checks.
 - Keep line-length, broad pylint-style rules, try/raise style, unused-argument cleanup, and deeper refactors as separate passing steps.
 
 ## Post-v0.4 Backlog
