@@ -9,7 +9,6 @@ jobs:
   bash:
     name: Bash - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -121,7 +120,6 @@ jobs:
   powershell:
     name: PowerShell - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on Windows
     runs-on: windows-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -211,7 +209,6 @@ jobs:
   cmd:
     name: CMD - Python 3.12 on Windows
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

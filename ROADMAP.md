@@ -41,12 +41,32 @@ The following old roadmap themes have already been absorbed by `v0.4.0` and shou
 
 These are the first items after the `v0.4.0` tag, before adding larger product features:
 
+Version target: use `0.4.1` for the first hardening release. Do not jump to `0.5.0` until SafeDeps has genuinely stronger guarantees: required e2e gates are green without hidden failures, static analysis is stricter, and the SCFW parity checklist below is mostly complete.
+
 1. Make CI truthfully blocking again: remove `continue-on-error` from stable workflows only after each affected job is green locally and remotely.
 2. Fix Windows e2e failures instead of masking them, especially pip guard and shell-wrapper paths.
 3. Promote e2e pip from diagnostic to required once the matrix has no hidden failing cases.
 4. Strengthen Ruff and mypy so quality jobs catch more than syntax-level errors.
 5. Add explicit compatibility matrices for pip versions and Poetry versions before claiming SCFW-level coverage.
 6. Keep npm and NuGet registry publishing out of stable claims until token scope, package identity, provenance, and publish dry runs are proven.
+
+Suggested release ladder:
+
+- `0.4.1`: CI truth hardening. Fix hidden failing jobs, reduce `continue-on-error`, keep registry claims unchanged.
+- `0.4.2`: pip guard compatibility expansion. Add harder pip install cases and a broader pip-version matrix.
+- `0.4.3`: static analysis hardening. Tighten Ruff and mypy in small, passing steps.
+- `0.4.4`: Poetry and release-trust validation. Add Poetry matrix work and verify publishing/attestation claims.
+- `0.5.0`: claim upgrade only if required gates are truly blocking and SCFW parity/surpass evidence is documented.
+
+Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release candidate is ready.
+
+### 0.4.1 Local Work Plan
+
+- Inventory every `continue-on-error` and classify it as stable-required or diagnostic.
+- Reproduce the failing Windows/pip/e2e behavior locally or from GitHub logs before changing workflow policy.
+- Fix the failure first, then remove or narrow `continue-on-error`.
+- Keep npm/NuGet runtime and registry publishing diagnostic/experimental until tested independently.
+- Run local gates before any commit: `make checks`, version preflight, package build, `twine check`, and representative CLI/UI smoke.
 
 ## Post-v0.4 Backlog
 
