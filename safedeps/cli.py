@@ -3,86 +3,35 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from . import dependency_actions as _dependency_actions_mod
 from . import guard as _guard
 from . import runtime as _runtime_mod
 from . import ui_dependencies as _ui_dependencies_mod
-from .constants import RULE_EXPLAINERS, SEVERITY_ORDER
+from .constants import SEVERITY_ORDER
 from .cli_parser import build_parser
-from .dependency_actions import (
-    _format_command_output,
-    _format_dependency_ui_error,
-    _evaluate_dependency_risk,
-    _get_installed_version,
-    _get_pip_required_by,
-    _is_exact_version,
-    _is_valid_package_name,
-    _post_change_compat_checks,
-    _rollback_dependency_change,
-    _run_cmd,
-    _safe_auto_version_npm,
-    _safe_auto_version_pip,
-    apply_dependency_action,
-    apply_policy_quick_update,
-)
-from .doctor import _python_env_warnings, cmd_doctor
-from .exceptions import cmd_approve, cmd_baseline, cmd_explain, upsert_approval_entry, write_baseline_file
+from .dependency_actions import _format_dependency_ui_error, _run_cmd  # noqa: F401
+from .doctor import cmd_doctor
+from .exceptions import cmd_approve, cmd_baseline, cmd_explain
 from .policy import DEFAULT_POLICY
 from .reports import (
-    _component_ref,
-    _finding_fingerprint,
-    _finding_fingerprint_from_dict,
-    _html_escape,
-    _js_escape,
-    _purl_for,
-    _sarif_level,
-    _unique_components,
-    apply_vulnerability_baseline,
-    finding_fingerprint,
     print_summary,
-    to_cyclonedx,
-    to_html_report,
-    to_sarif,
-    to_spdx,
 )
 from .runtime import (
-    InstallMode,
-    _default_ui_workspace,
-    _detect_project_runtime_python,
+    _detect_project_runtime_python,  # noqa: F401 - compatibility re-export
     _has_project_runtime_candidates,
-    _install_mode,
-    _installation_scope_label,
-    _is_project_scoped_install,
-    _iter_project_runtime_candidates,
-    _looks_like_project_root,
-    _normalize_project_path,
-    _project_runtime_python,
-    _python_from_virtual_env,
-    _resolve_ui_start_path,
-    _runtime_python_for_action,
+    _is_project_scoped_install,  # noqa: F401 - compatibility re-export
+    _normalize_project_path,  # noqa: F401 - compatibility re-export
+    _project_runtime_python,  # noqa: F401 - compatibility re-export
+    _resolve_ui_start_path,  # noqa: F401 - compatibility re-export
     _runtime_python_for_project_scope,
     _runtime_python_for_system_scope,
 )
-from .scan import run_online_audits, run_scan_pipeline
-from .ui_render import (
-    _is_runtime_component,
-    _render_dependency_rows_table,
-    collect_runtime_components,
-    render_dependency_table,
-    render_findings_table,
-    render_pip_guard_panel,
-    render_ui_page,
-)
+from .scan import run_scan_pipeline
+from .ui_render import render_ui_page  # noqa: F401 - compatibility re-export
 from .ui_server import cmd_ui, cmd_ui_shortcut
-from .ui_state import (
-    _ui_state_from_form,
-    create_intelligence_templates,
-    default_ui_state,
-    load_intelligence_into_state,
-    save_intelligence_from_state,
-)
 
 
 _ORIGINAL_COLLECT_RUNTIME_COMPONENTS = _ui_dependencies_mod.collect_runtime_components
@@ -132,7 +81,7 @@ def render_dependency_table(
     protection_scope: str = "project",
     installation_scope: str | None = None,
 ):
-    collector = globals().get("collect_runtime_components")
+    collector: Any = globals().get("collect_runtime_components")
     _ui_dependencies_mod.collect_runtime_components = (
         collector if collector is not _COMPAT_COLLECT_RUNTIME_COMPONENTS else _ORIGINAL_COLLECT_RUNTIME_COMPONENTS
     )

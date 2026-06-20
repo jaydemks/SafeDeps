@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .constants import RULE_EXPLAINERS
 from .reports import _finding_fingerprint_from_dict
@@ -13,9 +14,9 @@ def upsert_approval_entry(root: Path, baseline_rel: str, manager: str, rule: str
     try:
         datetime.fromisoformat(expires).date()
     except Exception:
-        raise ValueError("Invalid expires format. Use YYYY-MM-DD.")
+        raise ValueError("Invalid expires format. Use YYYY-MM-DD.") from None
     baseline_path = root / baseline_rel
-    data = {"suppress": []}
+    data: dict[str, Any] = {"suppress": []}
     if baseline_path.exists():
         try:
             data = json.loads(baseline_path.read_text(encoding="utf-8"))
@@ -140,4 +141,3 @@ def cmd_approve(args):
     baseline_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"Added approval: {manager}/{rule} package={package or '*'} file={file_value or '*'} expires={expires}")
     return 0
-

@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 from safedeps.models import Finding
-from safedeps.scanners.typosquat import typosquat_finding
 
 
 class MetadataSignals:

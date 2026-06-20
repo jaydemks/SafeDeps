@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from .constants import SEVERITY_ORDER
 from .models import ScanResult
@@ -48,7 +49,6 @@ def render_dependency_table(
 ):
     components = _unique_components(result.sbom.get("components", []))
     mode = _install_mode(root, installation_scope)
-    install_scope = mode.label
     project_py = mode.project_runtime_python()
     system_runtime: list[dict] = []
     project_runtime: list[dict] = []
@@ -159,7 +159,7 @@ def _render_dependency_rows_table(result: ScanResult, fail_on: str, components: 
         return "<p class='hint'>No dependencies detected for this scope.</p>"
 
     threshold = SEVERITY_ORDER.get(fail_on, SEVERITY_ORDER["HIGH"])
-    by_pkg = {}
+    by_pkg: dict[tuple[str, str], dict[str, Any]] = {}
     for c in components:
         manager = str(c.get("manager", "")).strip()
         name = str(c.get("name", "")).strip()

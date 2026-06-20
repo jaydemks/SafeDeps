@@ -7,50 +7,50 @@ from pathlib import Path
 from .guard_backend import GuardBackendFiles, write_guard_backend_files
 from .guard_hooks import (
     _init_project,
-    _runtime_guard_pth_line,
-    _runtime_guard_pth_name,
-    _runtime_guard_pth_names,
-    _site_package_candidates,
+    _runtime_guard_pth_line,  # noqa: F401 - compatibility re-export
+    _runtime_guard_pth_name,  # noqa: F401 - compatibility re-export
+    _runtime_guard_pth_names,  # noqa: F401 - compatibility re-export
+    _site_package_candidates,  # noqa: F401 - compatibility re-export
     install_interpreter_guard_hook,
-    remove_interpreter_guard_hook,
+    remove_interpreter_guard_hook,  # noqa: F401 - compatibility re-export
 )
 from .guard_repo import detect_official_repo_url
 from .guard_state import (
-    _cmd_autorun_snippet,
-    _cmd_autorun_snippet_present,
-    _effective_autoguard_enabled,
-    _filter_guard_path_entries,
+    _cmd_autorun_snippet,  # noqa: F401 - compatibility re-export
+    _cmd_autorun_snippet_present,  # noqa: F401 - compatibility re-export
+    _effective_autoguard_enabled,  # noqa: F401 - compatibility re-export
+    _filter_guard_path_entries,  # noqa: F401 - compatibility re-export
     _force_autoguard_resync,
-    _get_cmd_autorun_windows,
-    _get_user_path_entries_windows,
-    _guard_profile_snippet,
-    _guard_state_file,
-    _is_auto_guard_enabled,
+    _get_cmd_autorun_windows,  # noqa: F401 - compatibility re-export
+    _get_user_path_entries_windows,  # noqa: F401 - compatibility re-export
+    _guard_profile_snippet,  # noqa: F401 - compatibility re-export
+    _guard_state_file,  # noqa: F401 - compatibility re-export
+    _is_auto_guard_enabled,  # noqa: F401 - compatibility re-export
     _is_project_install_scope,
-    _is_safedeps_bindir_entry,
+    _is_safedeps_bindir_entry,  # noqa: F401 - compatibility re-export
     _is_windows,
     _load_guard_state,
-    _path_guard_entry_present,
-    _powershell_profile_candidates,
-    _profile_snippet_present,
-    _running_in_virtualenv_for_safedeps,
-    _set_cmd_autorun_autoguard,
-    _set_powershell_autoguard,
-    _set_user_path_guard_entry,
+    _path_guard_entry_present,  # noqa: F401 - compatibility re-export
+    _powershell_profile_candidates,  # noqa: F401 - compatibility re-export
+    _profile_snippet_present,  # noqa: F401 - compatibility re-export
+    _running_in_virtualenv_for_safedeps,  # noqa: F401 - compatibility re-export
+    _set_cmd_autorun_autoguard,  # noqa: F401 - compatibility re-export
+    _set_powershell_autoguard,  # noqa: F401 - compatibility re-export
+    _set_user_path_guard_entry,  # noqa: F401 - compatibility re-export
     _state_auto_guard_enabled,
-    _strip_autoguard_blocks,
-    _strip_cmd_autorun_blocks,
-    _sync_autoguard_state_file,
-    _verify_autoguard_state,
-    _write_cmd_autorun_windows,
+    _strip_autoguard_blocks,  # noqa: F401 - compatibility re-export
+    _strip_cmd_autorun_blocks,  # noqa: F401 - compatibility re-export
+    _sync_autoguard_state_file,  # noqa: F401 - compatibility re-export
+    _verify_autoguard_state,  # noqa: F401 - compatibility re-export
+    _write_cmd_autorun_windows,  # noqa: F401 - compatibility re-export
     _write_guard_state,
-    _write_user_path_entries_windows,
-    apply_guard_toggle,
+    _write_user_path_entries_windows,  # noqa: F401 - compatibility re-export
+    apply_guard_toggle,  # noqa: F401 - compatibility re-export
     cleanup_guard_install,
-    get_current_shell_guard_status,
-    get_guard_mode_status,
-    get_protection_scope,
-    get_setup_status,
+    get_current_shell_guard_status,  # noqa: F401 - compatibility re-export
+    get_guard_mode_status,  # noqa: F401 - compatibility re-export
+    get_protection_scope,  # noqa: F401 - compatibility re-export
+    get_setup_status,  # noqa: F401 - compatibility re-export
 )
 
 

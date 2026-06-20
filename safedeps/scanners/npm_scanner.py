@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 from safedeps.models import Finding
 from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
@@ -10,9 +11,11 @@ from safedeps.scanners.metadata_signals import MetadataSignals
 from safedeps.verifiers import verify_package
 
 try:
-    import yaml
+    import yaml as _yaml
 except Exception:  # pragma: no cover - optional dependency
-    yaml = None
+    _yaml = None  # type: ignore[assignment]
+
+yaml: Any = _yaml
 
 BAD_NAME_HINTS = ["crypto", "stealer", "grabber", "token", "discord-token", "postinstall"]
 

@@ -54,7 +54,6 @@ def cmd_ui(args):
     port = args.port
     start_path = _resolve_ui_start_path(args.path)
     default_fail_on = args.fail_on
-    setup_note = ""
     install_scope_arg = getattr(args, "install_scope", "auto")
     install_mode = _install_mode(start_path, None if install_scope_arg == "auto" else install_scope_arg)
 

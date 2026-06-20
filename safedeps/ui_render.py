@@ -1,24 +1,16 @@
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
 from pathlib import Path
 
 from .constants import SEVERITY_ORDER
 from .models import ScanResult
-from .reports import _html_escape, _js_escape, _unique_components
+from .reports import _html_escape
 from .runtime import (
-    _detect_project_runtime_python,
-    _has_project_runtime_candidates,
     _install_mode,
 )
 from .ui_assets import UI_CSS
 from .ui_state import default_ui_state, load_intelligence_into_state
 from .ui_dependencies import (
-    _is_runtime_component,
-    _render_dependency_rows_table,
-    collect_runtime_components,
     render_dependency_table,
     render_findings_table,
     render_pip_guard_panel,

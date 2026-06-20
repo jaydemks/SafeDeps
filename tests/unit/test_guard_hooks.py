@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import safedeps.guard_hooks as guard_hooks
 
@@ -62,7 +61,6 @@ def test_install_interpreter_guard_hook_is_disabled_under_pytest(monkeypatch, tm
 
 
 def test_install_interpreter_guard_hook_writes_first_available_site_dir(monkeypatch, tmp_path):
-    blocked = tmp_path / "blocked"
     writable = tmp_path / "site-packages"
     calls = []
 

@@ -80,7 +80,7 @@ Status: completed on `main` after the post-`v0.4.0` hardening commits. Keep `v0.
 
 ### 0.4.2 Next: pip Guard Compatibility Expansion
 
-Status: final validation pending on GitHub Actions. Focus: make Python/pip coverage strong enough to support SCFW-surpass evidence without broadening ecosystem claims prematurely.
+Status: completed after GitHub Actions validation. Focus: make Python/pip coverage strong enough to support SCFW-surpass evidence without broadening ecosystem claims prematurely.
 
 - [x] Add required e2e coverage for constraints files.
 - [x] Add required e2e coverage for editable local installs.
@@ -94,6 +94,24 @@ Status: final validation pending on GitHub Actions. Focus: make Python/pip cover
 - [x] Add required `pip uninstall` block coverage.
 - [x] Add explicit global-scope runtime guard coverage outside the configured project root.
 - Consider a wider Python-version-by-pip-version grid only if CI duration remains acceptable.
+
+### 0.4.2 Cleanup: E2E Structure Refactor
+
+Status: completed before `0.4.3`.
+
+- [x] Extract Bash pip guard e2e behavior into `scripts/e2e/pip_guard_bash.sh`.
+- [x] Extract PowerShell pip guard e2e behavior into `scripts/e2e/pip_guard_pwsh.ps1`.
+- [x] Extract CMD pip guard e2e behavior into `scripts/e2e/pip_guard_cmd.bat`.
+- [x] Keep `.github/workflows/e2e-pip.yml` focused on checkout, Python/pip matrix setup, and calling the e2e scripts.
+- Keep future e2e workflows human-readable: named scripts, named test sections, no large inline shell blocks unless the logic is truly one-off.
+
+### 0.4.3 In Progress: Static Analysis Hardening
+
+Focus: make quality checks catch real defects while avoiding a noisy one-shot migration.
+
+- [x] Remove `ignore_errors = true` from mypy.
+- [x] Expand Ruff from syntax-only checks to unused imports, redefinitions, unused variables, exception chaining, and sorted public exports.
+- Keep line-length, import-order, pyupgrade, simplify, and broader Ruff migrations as separate passing steps.
 
 ## Post-v0.4 Backlog
 

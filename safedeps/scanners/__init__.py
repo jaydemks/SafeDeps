@@ -7,12 +7,12 @@ from safedeps.scanners.pip_scanner import PipScanner
 SCANNERS = [PipScanner(), NpmScanner(), NugetScanner(), GitScanner()]
 
 __all__ = [
-    "Scanner",
-    "severity_for_exception",
-    "PipScanner",
+    "SCANNERS",
+    "GitScanner",
     "NpmScanner",
     "NugetScanner",
-    "GitScanner",
-    "SCANNERS",
+    "PipScanner",
+    "Scanner",
+    "severity_for_exception",
     "yaml",
 ]

@@ -16,8 +16,6 @@ from safedeps.cli import (
     _resolve_ui_start_path,
     _is_project_scoped_install,
     _normalize_project_path,
-    _iter_project_runtime_candidates,
-    _has_project_runtime_candidates,
     _detect_project_runtime_python,
     _install_mode,
     _project_runtime_python,
