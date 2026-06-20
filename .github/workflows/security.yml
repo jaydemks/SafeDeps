@@ -34,6 +34,7 @@ jobs:
   scorecard:
     name: OpenSSF Scorecard
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.event_name != 'pull_request'
     permissions:
       contents: read

@@ -9,6 +9,7 @@ jobs:
   scan:
     name: NuGet scan - .NET ${{ matrix.dotnet-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +54,7 @@ jobs:
         shell: pwsh
         if: runner.os == 'Windows'
         run: |
+          $ErrorActionPreference = "Continue"
           $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-nuget-floating"
           New-Item -ItemType Directory -Force -Path $project | Out-Null

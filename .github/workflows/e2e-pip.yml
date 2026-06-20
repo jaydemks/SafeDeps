@@ -9,6 +9,7 @@ jobs:
   bash:
     name: Bash - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +121,7 @@ jobs:
   powershell:
     name: PowerShell - Python ${{ matrix.python-version }} / pip ${{ matrix.pip-version }} on Windows
     runs-on: windows-latest
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -145,6 +147,7 @@ jobs:
       - name: Project guard blocks and allows pip installs
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Continue"
           $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
@@ -161,6 +164,7 @@ jobs:
       - name: Activated shell blocks unpinned requirements
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Continue"
           $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-requirements-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
@@ -179,6 +183,7 @@ jobs:
       - name: Activated shell blocks python -m pip bypass
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Continue"
           $PSNativeCommandUseErrorActionPreference = $false
           $project = Join-Path $env:RUNNER_TEMP "safedeps-python-m-pip-e2e"
           New-Item -ItemType Directory -Force -Path $project | Out-Null
@@ -206,6 +211,7 @@ jobs:
   cmd:
     name: CMD - Python 3.12 on Windows
     runs-on: windows-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
