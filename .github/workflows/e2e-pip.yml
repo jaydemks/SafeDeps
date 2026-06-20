@@ -188,6 +188,14 @@ jobs:
           Set-Location $project
           python -m safedeps.cli setup . --fail-on HIGH --install-scope system --protection-scope project
           . .\.safedeps\activate.ps1
+          Write-Host "SafeDeps PowerShell command resolution:"
+          Get-Command python -All | Select-Object Name,CommandType,Source | Format-Table -AutoSize | Out-String | Write-Host
+          Write-Host "SafeDeps guard state:"
+          Get-Content .\.safedeps\guard-state.json | Write-Host
+          Write-Host "SafeDeps runtime guard hooks:"
+          python -c "import pathlib, site; [print(p) for d in site.getsitepackages()+[site.getusersitepackages()] for p in pathlib.Path(d).glob('*safedeps*guard*.pth')]"
+          & .\.safedeps\bin\python.ps1 -m pip install six
+          Write-Host "direct python.ps1 exit code: $LASTEXITCODE"
           python -m pip install six
           if ($LASTEXITCODE -eq 0) {
             Write-Error "Expected unpinned python -m pip install to be blocked."
