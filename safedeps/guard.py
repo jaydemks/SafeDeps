@@ -144,26 +144,30 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "uninstall" ] || [ "${{1:-}}" = 
   fi
   if [ "${{1:-}}" = "install" ]; then
     shift
-    expect_val=0
-    for tok in "$@"; do
-      if [ $expect_val -eq 1 ]; then expect_val=0; continue; fi
-      case "$tok" in
-        -r|--requirement|-c|--constraint|-i|--index-url|--extra-index-url|--find-links|-f) expect_val=1; continue ;;
-        -*) continue ;;
-      esac
-      case "$tok" in
-        .*|/*|\\*|[A-Za-z]:\\*|*.whl|*.tar.gz|*.zip) continue ;;
-        git+*|http://*|https://*|file://*)
-          echo "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
-          exit 2
-          ;;
-      esac
-      echo "$tok" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)" && continue
-      if ! echo "$tok" | grep -Fq "=="; then
-        echo "Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3)."
-        exit 2
-      fi
-    done
+    if ! "${{REAL_PY}}" - "$PWD" "$@" <<'PY'
+import sys
+from pathlib import Path
+
+from safedeps import runtime_guard
+
+root = Path(sys.argv[1])
+args = sys.argv[2:]
+tokens = [*runtime_guard._package_tokens(args), *runtime_guard._requirement_file_tokens(root, args)]
+for token in tokens:
+    if runtime_guard._looks_like_local_reference(token):
+        continue
+    if runtime_guard._package_name(token) == "safedeps":
+        continue
+    if runtime_guard._looks_like_direct_reference(token):
+        print("Blocked: direct URL/VCS runtime install is not allowed without explicit review.", file=sys.stderr)
+        sys.exit(2)
+    if "==" not in token:
+        print("Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3).", file=sys.stderr)
+        sys.exit(2)
+PY
+    then
+      exit 2
+    fi
     set -- install "$@"
   fi
   if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "download" ]; then
@@ -621,29 +625,31 @@ if [ "${{1:-}}" = "-m" ] && [ "${{2:-}}" = "pip" ]; then
     exit 2
   fi
   if [ "$sub" = "install" ]; then
-      expect_val=0
-      i=0
-      for tok in "$@"; do
-        i=$((i+1))
-        [ $i -le 3 ] && continue
-        if [ $expect_val -eq 1 ]; then expect_val=0; continue; fi
-        case "$tok" in
-          -r|--requirement|-c|--constraint|-i|--index-url|--extra-index-url|--find-links|-f) expect_val=1; continue ;;
-          -*) continue ;;
-        esac
-        case "$tok" in
-          .*|/*|\\*|[A-Za-z]:\\*|*.whl|*.tar.gz|*.zip) continue ;;
-          git+*|http://*|https://*|file://*)
-            echo "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
-            exit 2
-            ;;
-        esac
-        echo "$tok" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)" && continue
-        if ! echo "$tok" | grep -Fq "=="; then
-          echo "Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3)."
-          exit 2
-        fi
-      done
+      install_args=("${{@:4}}")
+      if ! "${{REAL_PY}}" - "$PWD" "${{install_args[@]}}" <<'PY'
+import sys
+from pathlib import Path
+
+from safedeps import runtime_guard
+
+root = Path(sys.argv[1])
+args = sys.argv[2:]
+tokens = [*runtime_guard._package_tokens(args), *runtime_guard._requirement_file_tokens(root, args)]
+for token in tokens:
+    if runtime_guard._looks_like_local_reference(token):
+        continue
+    if runtime_guard._package_name(token) == "safedeps":
+        continue
+    if runtime_guard._looks_like_direct_reference(token):
+        print("Blocked: direct URL/VCS runtime install is not allowed without explicit review.", file=sys.stderr)
+        sys.exit(2)
+    if "==" not in token:
+        print("Blocked: unpinned runtime install is not allowed. Use exact versions (example: package==1.2.3).", file=sys.stderr)
+        sys.exit(2)
+PY
+      then
+        exit 2
+      fi
     fi
     ARGS_STR="$*"
     if echo "$ARGS_STR" | grep -Eiq "(^|[[:space:]])safedeps([[:space:]]|$)"; then
