@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Restore .NET tool project
@@ -239,7 +239,7 @@ jobs:
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
       - name: Publish to NuGet (conditional)
