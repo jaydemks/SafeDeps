@@ -187,5 +187,4 @@ def _resolve_ui_start_path(path_arg: str):
         d = _default_ui_workspace()
         d.mkdir(parents=True, exist_ok=True)
         return d
-    p = Path(raw).expanduser().resolve()
-    return p
+    return Path(raw).expanduser().resolve()

@@ -22,7 +22,7 @@ def test_cmd_doctor_reports_manifest_guard_and_toolchain_warnings(tmp_path, monk
     monkeypatch.setattr(doctor, "get_current_shell_guard_status", lambda root: "INACTIVE (wrapper path not found in current PATH).")
     monkeypatch.setattr(doctor, "get_guard_mode_status", lambda root: "OFF now (unless manually activated) | Auto-start OFF | Scope: PROJECT.")
     monkeypatch.setattr(doctor.shutil, "which", lambda name: None)
-    monkeypatch.setattr(doctor, "_python_env_warnings", lambda: [])
+    monkeypatch.setattr(doctor, "_python_env_warnings", list)
 
     assert doctor.cmd_doctor(SimpleNamespace(path=str(tmp_path))) == 0
     out = capsys.readouterr().out
@@ -46,7 +46,7 @@ def test_cmd_doctor_fails_on_invalid_policy_shape(tmp_path, monkeypatch, capsys)
         json.dumps({"allowed_registries": [], "deny_packages": {}, "exceptions": {}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr(doctor, "_python_env_warnings", lambda: [])
+    monkeypatch.setattr(doctor, "_python_env_warnings", list)
 
     assert doctor.cmd_doctor(SimpleNamespace(path=str(tmp_path))) == 2
     out = capsys.readouterr().out
@@ -71,7 +71,7 @@ def test_cmd_doctor_reports_invalid_policy_values(tmp_path, monkeypatch, capsys)
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(doctor, "_python_env_warnings", lambda: [])
+    monkeypatch.setattr(doctor, "_python_env_warnings", list)
 
     assert doctor.cmd_doctor(SimpleNamespace(path=str(tmp_path))) == 2
     out = capsys.readouterr().out
@@ -87,7 +87,7 @@ def test_cmd_doctor_reports_invalid_metadata_shape(tmp_path, monkeypatch, capsys
     safedeps_dir.mkdir()
     (safedeps_dir / "policy.json").write_text(json.dumps({"schema": "safedeps.policy.v1"}), encoding="utf-8")
     (safedeps_dir / "metadata-cache.json").write_text(json.dumps({"pip": {"demo": "bad"}}), encoding="utf-8")
-    monkeypatch.setattr(doctor, "_python_env_warnings", lambda: [])
+    monkeypatch.setattr(doctor, "_python_env_warnings", list)
 
     assert doctor.cmd_doctor(SimpleNamespace(path=str(tmp_path))) == 0
     out = capsys.readouterr().out

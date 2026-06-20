@@ -195,7 +195,7 @@ class NpmScanner(Scanner):
         while i < len(lines):
             line = lines[i]
             stripped = line.strip()
-            if not stripped or line.startswith("#") or line.startswith(" "):
+            if not stripped or line.startswith(("#", " ")):
                 i += 1
                 continue
             if not stripped.endswith(":"):

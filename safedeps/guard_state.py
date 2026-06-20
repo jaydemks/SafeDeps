@@ -225,8 +225,7 @@ def _strip_cmd_autorun_blocks(text: str):
     cleaned = re.sub(old_pattern, " & ", text or "")
     cleaned = re.sub(new_pattern, " & ", cleaned)
     cleaned = re.sub(r"(\s*&\s*){2,}", " & ", cleaned).strip()
-    cleaned = re.sub(r"^&\s*|\s*&$", "", cleaned).strip()
-    return cleaned
+    return re.sub(r"^&\s*|\s*&$", "", cleaned).strip()
 
 def _load_guard_state(root: Path):
     default = {"auto_guard": False, "auto_guard_powershell": False, "protection_scope": "project", "project_root": str(root)}

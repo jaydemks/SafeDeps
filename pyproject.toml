@@ -52,7 +52,7 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E9", "F401", "F811", "F821", "F841", "B904", "I", "SIM", "UP", "RUF022"]
+select = ["E9", "F401", "F811", "F821", "F841", "B904", "C4", "I", "PIE", "PTH", "RET", "SIM", "UP", "RUF022"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

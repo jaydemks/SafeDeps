@@ -317,7 +317,7 @@ def test_ui_page_renders_findings():
         ],
         sbom={"components": [{"name": "lodash", "version": "1.0.0", "manager": "npm"}]},
     )
-    page = render_ui_page(Path(".").resolve(), "HIGH", result=result, outdir=Path("security-artifacts"))
+    page = render_ui_page(Path().resolve(), "HIGH", result=result, outdir=Path("security-artifacts"))
     assert "SafeDeps UI" in page
     assert "FLOATING_VERSION" in page
     assert "package.json" in page
@@ -524,7 +524,7 @@ def test_render_dependency_table_global_scope_splits_sections():
             ]
         },
     )
-    table = render_dependency_table(result, "HIGH", Path("."), "global", installation_scope="system")
+    table = render_dependency_table(result, "HIGH", Path(), "global", installation_scope="system")
     assert "Project dependencies" in table
     assert "System/runtime dependencies" in table
     assert "demo-project" in table

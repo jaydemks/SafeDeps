@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,8 +43,8 @@ def write_guard_backend_files(
     pip3_path = posix_bindir / "pip3"
     pip_path.write_text(files.pip_wrapper, encoding="utf-8", newline="\n")
     pip3_path.write_text(files.pip_wrapper, encoding="utf-8", newline="\n")
-    os.chmod(pip_path, 0o755)
-    os.chmod(pip3_path, 0o755)
+    pip_path.chmod(0o755)
+    pip3_path.chmod(0o755)
 
     (bindir / "pip.ps1").write_text(files.pip_ps1, encoding="utf-8")
     (bindir / "pip3.ps1").write_text(files.pip3_ps1, encoding="utf-8")
@@ -54,7 +53,7 @@ def write_guard_backend_files(
 
     npm_path = posix_bindir / "npm"
     npm_path.write_text(files.npm_wrapper, encoding="utf-8", newline="\n")
-    os.chmod(npm_path, 0o755)
+    npm_path.chmod(0o755)
     (bindir / "npm.ps1").write_text(files.npm_ps1, encoding="utf-8")
     (bindir / "npm.cmd").write_text(files.npm_cmd, encoding="utf-8")
 
@@ -62,8 +61,8 @@ def write_guard_backend_files(
     python3_path = posix_bindir / "python3"
     python_path.write_text(files.python_wrapper, encoding="utf-8", newline="\n")
     python3_path.write_text(files.python_wrapper, encoding="utf-8", newline="\n")
-    os.chmod(python_path, 0o755)
-    os.chmod(python3_path, 0o755)
+    python_path.chmod(0o755)
+    python3_path.chmod(0o755)
     (bindir / "python.ps1").write_text(files.python_ps1, encoding="utf-8")
     (bindir / "python3.ps1").write_text(files.python_ps1, encoding="utf-8")
     (bindir / "python.cmd").write_text(files.python_cmd, encoding="utf-8")
@@ -78,7 +77,7 @@ def write_guard_backend_files(
         encoding="utf-8",
         newline="\n",
     )
-    os.chmod(activate, 0o755)
+    activate.chmod(0o755)
 
     activate_bat = root / ".safedeps" / "activate.bat"
     activate_bat.write_text(

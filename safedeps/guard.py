@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from contextlib import suppress
 from pathlib import Path
@@ -58,7 +57,7 @@ from .guard_state import (
 def cmd_setup(args):
     root = Path(args.path).resolve()
     fail_on = str(getattr(args, "fail_on", "HIGH") or "HIGH").upper()
-    real_python = os.path.abspath(sys.executable)
+    real_python = str(Path(sys.executable).absolute())
     official_repo = detect_official_repo_url(root)
     install_scope = getattr(args, "install_scope", None)
     requested_protection_scope = str(getattr(args, "protection_scope", "auto") or "auto").strip().lower()
