@@ -116,15 +116,16 @@ Status: completed locally after passing `make checks`; verify GitHub Actions aft
 - [x] Add naming Ruff gate and stricter mypy warnings for redundant casts, unused ignores, implicit optionals, and equality checks.
 - Keep line-length, broad pylint-style rules, try/raise style, unused-argument cleanup, and deeper refactors as separate passing steps.
 
-### 0.4.4 In Progress: Poetry And Release-Trust Validation
+### 0.4.4 Completed: Poetry And Release-Trust Validation
 
-Focus: close the SCFW comparison gap around Poetry version coverage and make release-trust claims evidence-based.
+Status: completed locally after passing `make checks`; verify GitHub Actions after push.
 
 - [x] Add required Poetry lock scan e2e workflow across Poetry `1.7.1`, `1.8.5`, `2.0.1`, `2.1.4`, `2.2.1`, `2.3.4`, and `2.4.1`.
 - [x] Validate SafeDeps scans a real `poetry lock` output as safe when no policy violation exists.
 - [x] Validate SafeDeps reports denylist findings from real `poetry.lock` output.
 - [x] Add static release workflow contract tests for artifact manifest, publish-token fallbacks, and attestation subject paths.
 - [x] Validate release manifest generation writes deterministic POSIX artifact paths and SHA256 checksums.
+- [x] Validate dry-run release workflow behavior builds artifacts without registry publish jobs.
 - Keep PyPI Trusted Publishing, npm provenance, and NuGet publishing claims limited until real release workflow runs prove them.
 
 ## Post-v0.4 Backlog
