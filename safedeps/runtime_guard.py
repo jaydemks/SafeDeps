@@ -38,6 +38,8 @@ def _pip_subcommand(argv: list[str]) -> str | None:
     exe_name = Path(argv[0]).name.lower()
     if exe_name.startswith("pip") and len(argv) >= 2:
         return argv[1].lower()
+    if argv[0] == "-m" and len(argv) >= 3 and argv[1].lower() == "pip":
+        return argv[2].lower()
     if argv[0] == "-m" and len(argv) >= 2 and argv[1].lower() in GUARDED_PIP_COMMANDS:
         return argv[1].lower()
     return None
@@ -178,8 +180,6 @@ def _block(message: str) -> None:
 
 
 def _guard_applies(root: Path, expected_venv: str, state: dict) -> bool:
-    if not bool(state.get("auto_guard", state.get("auto_guard_powershell", False))):
-        return False
     scope = str(state.get("protection_scope") or "project").lower()
     project_root = Path(str(state.get("project_root") or root)).resolve()
     if scope != "global" and not _is_subpath(Path.cwd(), project_root):
@@ -230,7 +230,9 @@ def run(project_root: str, expected_venv: str = "", official_repo: str = "") -> 
     if not _guard_applies(root, expected_venv, state):
         return
 
-    if argv[0] == "-m":
+    if argv[0] == "-m" and len(argv) >= 2 and argv[1].lower() == "pip":
+        pip_args = argv[2:]
+    elif argv[0] == "-m":
         pip_args = argv[1:]
     else:
         pip_args = argv[1:]

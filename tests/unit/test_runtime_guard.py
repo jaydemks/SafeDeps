@@ -30,6 +30,7 @@ def test_load_state_reads_dict(tmp_path):
     [
         (["pip", "install", "requests"], "install"),
         (["pip3", "download", "requests"], "download"),
+        (["-m", "pip", "install", "requests"], "install"),
         (["-m", "install", "requests"], "install"),
         (["python", "-m", "pip", "install"], None),
         (["pip"], None),
@@ -115,11 +116,10 @@ def test_guard_applies_requires_auto_guard_and_project_scope(tmp_path, monkeypat
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
 
-    assert not runtime_guard._guard_applies(tmp_path, "/venv", {"auto_guard": False})
     assert runtime_guard._guard_applies(
         tmp_path,
         "/venv",
-        {"auto_guard": True, "protection_scope": "project", "project_root": str(tmp_path)},
+        {"auto_guard": False, "protection_scope": "project", "project_root": str(tmp_path)},
     )
     assert not runtime_guard._guard_applies(
         tmp_path,
@@ -237,7 +237,30 @@ def test_run_respects_bypass_non_guarded_commands_and_inactive_guard(tmp_path, m
     monkeypatch.delenv("SAFEDEPS_RUNTIME_GUARD_BYPASS")
     (tmp_path / ".safedeps").mkdir(exist_ok=True)
     (tmp_path / ".safedeps" / "guard-state.json").write_text(json.dumps({"auto_guard": False}), encoding="utf-8")
+    monkeypatch.setattr(runtime_guard.sys, "argv", ["pip", "list"])
     runtime_guard.run(str(tmp_path))
+
+
+def test_run_blocks_python_module_pip_shape(tmp_path, monkeypatch):
+    state_file = tmp_path / ".safedeps" / "guard-state.json"
+    state_file.parent.mkdir()
+    state_file.write_text(
+        json.dumps({"auto_guard": False, "protection_scope": "project", "project_root": str(tmp_path)}),
+        encoding="utf-8",
+    )
+    messages = []
+    exits = []
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime_guard.sys, "prefix", "/venv")
+    monkeypatch.setattr(runtime_guard.sys, "argv", ["-m", "pip", "install", "requests"])
+    monkeypatch.setattr(runtime_guard, "_run_scan_or_block", lambda fail_on="HIGH": None)
+    monkeypatch.setattr(runtime_guard.sys, "stderr", SimpleNamespace(write=messages.append, flush=lambda: None))
+    monkeypatch.setattr(runtime_guard.os, "_exit", lambda code: exits.append(code))
+
+    runtime_guard.run(str(tmp_path), expected_venv="/venv")
+
+    assert exits == [2]
+    assert "unpinned runtime install" in "".join(messages)
 
 
 def test_run_blocks_uninstall_except_safedeps_self_uninstall(tmp_path, monkeypatch):
