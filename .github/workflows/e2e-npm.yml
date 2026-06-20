@@ -71,6 +71,7 @@ jobs:
             Write-Error "Expected floating npm dependency scan to fail."
             exit 1
           }
+          exit 0
       - name: Scan allows pinned npm dependency with lockfile
         shell: bash
         if: runner.os != 'Windows'
