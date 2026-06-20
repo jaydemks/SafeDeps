@@ -124,6 +124,7 @@ Focus: close the SCFW comparison gap around Poetry version coverage and make rel
 - [x] Validate SafeDeps scans a real `poetry lock` output as safe when no policy violation exists.
 - [x] Validate SafeDeps reports denylist findings from real `poetry.lock` output.
 - [x] Add static release workflow contract tests for artifact manifest, publish-token fallbacks, and attestation subject paths.
+- [x] Validate release manifest generation writes deterministic POSIX artifact paths and SHA256 checksums.
 - Keep PyPI Trusted Publishing, npm provenance, and NuGet publishing claims limited until real release workflow runs prove them.
 
 ## Post-v0.4 Backlog

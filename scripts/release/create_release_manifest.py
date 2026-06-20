@@ -4,8 +4,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def sha256_file(path: Path) -> str:
@@ -32,6 +32,10 @@ def collect_files(root: Path) -> list[Path]:
     return sorted(files, key=lambda p: str(p.relative_to(root)))
 
 
+def artifact_path(root: Path, path: Path) -> str:
+    return path.relative_to(root).as_posix()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create release artifact manifest with SHA256 checksums")
     parser.add_argument("--root", default=".", help="Repository root")
@@ -44,9 +48,8 @@ def main() -> int:
 
     entries = []
     for f in files:
-        rel = str(f.relative_to(root))
         entries.append({
-            "path": rel,
+            "path": artifact_path(root, f),
             "size": f.stat().st_size,
             "sha256": sha256_file(f),
         })

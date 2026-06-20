@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
-from scripts.release.create_release_manifest import collect_files
+from scripts.release import create_release_manifest
+from scripts.release.create_release_manifest import artifact_path, collect_files
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-template.yml"
@@ -61,9 +63,41 @@ def test_release_manifest_collects_python_npm_and_nuget_artifacts(tmp_path):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("artifact", encoding="utf-8")
 
-    assert [path.relative_to(tmp_path).as_posix() for path in collect_files(tmp_path)] == [
+    assert [artifact_path(tmp_path, path) for path in collect_files(tmp_path)] == [
         "artifacts/dotnet/SafeDeps.Tool.1.0.0.nupkg",
         "dist/safedeps-1.0.0-py3-none-any.whl",
         "dist/safedeps-1.0.0.tar.gz",
         "packages/npm-wrapper/jaydemks-safedeps-1.0.0.tgz",
+    ]
+
+
+def test_release_manifest_main_writes_checksums_and_posix_paths(tmp_path, monkeypatch):
+    artifact = tmp_path / "dist" / "safedeps-1.0.0.tar.gz"
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    artifact.write_text("artifact", encoding="utf-8")
+    output = tmp_path / "release-artifacts" / "manifest.json"
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "create_release_manifest.py",
+            "--root",
+            str(tmp_path),
+            "--version",
+            "1.0.0",
+            "--output",
+            str(output.relative_to(tmp_path)),
+        ],
+    )
+
+    assert create_release_manifest.main() == 0
+    data = json.loads(output.read_text(encoding="utf-8"))
+    assert data["version"] == "1.0.0"
+    assert data["artifacts"] == [
+        {
+            "path": "dist/safedeps-1.0.0.tar.gz",
+            "size": len("artifact"),
+            "sha256": "c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c",
+        }
     ]
