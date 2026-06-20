@@ -45,7 +45,7 @@ jobs:
           rm -rf dist build ./*.egg-info
           python -m build
       - name: Upload Python dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-dist
           path: dist/
@@ -63,7 +63,7 @@ jobs:
           cd packages/npm-wrapper
           npm pack
       - name: Upload npm tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-wrapper-tarball
           path: packages/npm-wrapper/*.tgz
@@ -92,7 +92,7 @@ jobs:
             exit 1
           fi
       - name: Upload NuGet package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dotnet-tool-nupkg
           path: artifacts/dotnet/*.nupkg
@@ -129,7 +129,7 @@ jobs:
           fi
           python scripts/release/create_release_manifest.py --version "$VERSION"
       - name: Upload release manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-manifest
           path: release-artifacts/release-manifest.json
