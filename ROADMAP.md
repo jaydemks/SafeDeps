@@ -129,17 +129,17 @@ Status: completed locally after passing `make checks`; verify GitHub Actions aft
 - [x] Validate dry-run release workflow behavior builds artifacts without registry publish jobs.
 - Keep PyPI Trusted Publishing, npm provenance, and NuGet publishing claims limited until real release workflow runs prove them.
 
-### 0.4.5 In Progress: Claim Evidence And Release Candidate Readiness
+### 0.4.5 Completed: Claim Evidence And Release Candidate Readiness
 
-Status: local documentation and claim-contract work in progress. Keep package version files at `0.4.0` until the final release candidate is intentionally cut.
+Status: completed after local gates and GitHub Actions validation. Keep package version files at `0.4.0` until the final release candidate is intentionally cut.
 
 - [x] Document supported-scope evidence for the tested SafeDeps policy-gate paths without naming private benchmark targets in public docs.
 - [x] Keep comparison claims aligned with the tested support scope and private top-frontier baseline.
 - [x] Update ecosystem support to include Poetry lockfile scan validation without promoting Poetry runtime interception.
 - [x] Add documentation claim tests so future wording cannot silently overpromise Trusted Publishing, npm runtime protection, NuGet runtime protection, or public registry publishing.
 - [x] Verify local gates after this evidence-pack update: `345` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
-- [ ] Verify GitHub Actions after push.
-- [ ] Decide whether the next release should be `0.5.0` only after all required gates remain green and release notes match the scoped claim.
+- [x] Verify GitHub Actions after push.
+- [x] Decide next release target: `0.5.0`, with version files unchanged until the final release candidate is prepared.
 
 ## Post-v0.4 Backlog
 
