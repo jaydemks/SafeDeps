@@ -59,7 +59,7 @@ Suggested release ladder:
 - `0.4.5`: claim evidence and release-candidate readiness. Align public claims with the tested support scope and top-frontier baseline.
 - `0.5.0`: claim upgrade only if required gates are truly blocking and the supported-scope evidence is documented.
 
-Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release candidate is ready.
+Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release is ready.
 
 ### 0.4.1 Completed: CI Truth Hardening
 
@@ -129,9 +129,9 @@ Status: completed locally after passing `make checks`; verify GitHub Actions aft
 - [x] Validate dry-run release workflow behavior builds artifacts without registry publish jobs.
 - Keep PyPI Trusted Publishing, npm provenance, and NuGet publishing claims limited until real release workflow runs prove them.
 
-### 0.4.5 Completed: Claim Evidence And Release Candidate Readiness
+### 0.4.5 Completed: Claim Evidence And Release Readiness
 
-Status: completed after local gates and GitHub Actions validation. Keep package version files at `0.4.0` until the final release candidate is intentionally cut.
+Status: completed after local gates and GitHub Actions validation. Package version files stayed at `0.4.0` until the final `0.5.0` release preparation.
 
 - [x] Document supported-scope evidence for the tested SafeDeps policy-gate paths without naming private benchmark targets in public docs.
 - [x] Keep comparison claims aligned with the tested support scope and private top-frontier baseline.
@@ -139,11 +139,11 @@ Status: completed after local gates and GitHub Actions validation. Keep package 
 - [x] Add documentation claim tests so future wording cannot silently overpromise Trusted Publishing, npm runtime protection, NuGet runtime protection, or public registry publishing.
 - [x] Verify local gates after this evidence-pack update: `345` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - [x] Verify GitHub Actions after push.
-- [x] Decide next release target: `0.5.0`, with version files unchanged until the final release candidate is prepared.
+- [x] Decide next release target: `0.5.0`, with version files unchanged until final release preparation.
 
-### 0.5.0 In Progress: Release Candidate Preparation
+### 0.5.0 Completed: Beta Preview Release
 
-Status: local release-candidate preparation in progress. Package version files now target `0.5.0`; do not create the tag or GitHub release until final local gates, release preflight, and GitHub Actions are green.
+Status: completed after local gates, GitHub Actions validation, release dry-run, `v0.5.0` tag publish, PyPI publication, and GitHub Release verification.
 
 - [x] Bump Python, npm wrapper, and .NET tool package versions to `0.5.0`.
 - [x] Update legacy CI release preflight to expect `0.5.0`.
@@ -153,7 +153,8 @@ Status: local release-candidate preparation in progress. Package version files n
 - [x] Run final local quality gate for `0.5.0`: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - [x] Verify GitHub Actions after the release-candidate push.
 - [x] Run release workflow dry-run with `publish=false`.
-- [ ] Create tag and release only after the dry-run is green.
+- [x] Create tag and release only after the dry-run is green.
+- [x] Verify PyPI `0.5.0` availability and GitHub Release `v0.5.0` assets.
 
 ## Post-v0.4 Backlog
 

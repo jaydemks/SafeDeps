@@ -27,9 +27,9 @@ SafeDeps `0.5.0` still does not claim broad stable runtime protection for every 
 - `make checks PYTHON=.venv/bin/python` passed with `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - GitHub Actions required workflows passed on the final pre-tag validation push.
 - `SafeDeps Release Template` dry-run with `publish=false` passed on `main`, producing Python, npm, NuGet, and release manifest artifacts without registry publication or GitHub Release creation.
+- PyPI `0.5.0` is published and visible as the latest SafeDeps version.
+- GitHub Release `v0.5.0` is published as a prerelease with Python, npm wrapper, NuGet tool, and release manifest assets.
 
-## Follow-up Queue
+## Still Deliberately Limited
 
-- Confirm PyPI `0.5.0` availability after the tag release workflow completes.
-- Confirm GitHub Release `v0.5.0` assets and manifest after the tag release workflow completes.
 - Keep PyPI Trusted Publishing, npm public registry publishing, NuGet public registry publishing, and npm/NuGet runtime protection outside stable claims until their own release/e2e gates prove them.
