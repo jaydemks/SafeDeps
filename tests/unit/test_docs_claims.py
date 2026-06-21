@@ -45,7 +45,7 @@ def test_public_docs_keep_unproven_claims_limited():
 
     assert "public registry publishing until those areas have their own green, blocking evidence" in text
     assert "Trusted Publishing" in text
-    assert "Broader runtime blocking for npm and runtime blocking for NuGet must remain experimental" in text
+    assert "NuGet runtime protection is not claimed until SafeDeps has a dedicated `dotnet` command interception design" in text
 
 
 def test_comparison_scopes_strongest_claims():
@@ -62,7 +62,23 @@ def test_ecosystem_support_keeps_poetry_and_registry_claims_honest():
 
     assert "| Poetry lockfiles | Supported | Not claimed | Stable for lockfile scan validation |" in text
     assert "This does not promote Poetry install/update runtime interception" in text
-    assert "Broader runtime blocking for npm and runtime blocking for NuGet must remain experimental" in text
+    assert "| NuGet/.NET | Supported | Not claimed | Strong scan/CI validation; no stable runtime interception claim |" in text
+
+
+def test_public_docs_do_not_promote_nuget_runtime_without_interceptor():
+    text = "\n".join(
+        [
+            read_doc("ROADMAP.md"),
+            read_doc("docs/COMPARISON.md"),
+            read_doc("docs/ECOSYSTEM_SUPPORT.md"),
+            read_doc("docs/KNOWN_LIMITATIONS.md"),
+        ]
+    )
+
+    assert "does not yet install a dedicated `dotnet` command wrapper" in text
+    assert "does not yet install a `dotnet` command interceptor" in text
+    assert "NuGet runtime guard | Stable" not in text
+    assert "NuGet/.NET runtime guard | Stable" not in text
 
 
 def test_public_docs_do_not_link_private_comparison_artifacts():

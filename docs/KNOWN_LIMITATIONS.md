@@ -15,7 +15,7 @@ SafeDeps does not prove that a package is safe, does not replace code review, an
 | npm scanning | Supported | Manifest and lockfile checks are in scope. |
 | npm runtime guard | Limited | First blocking slice validated for Node 22 on Ubuntu Bash and Windows PowerShell/CMD; no broad production-grade runtime claim yet. |
 | NuGet/.NET scanning | Supported | Project, props, config, and lockfile checks are in scope. |
-| NuGet/.NET runtime guard | Experimental | No production-grade runtime claim until OS and .NET SDK e2e coverage is green. |
+| NuGet/.NET runtime guard | Not claimed | Scan/CI validation is strong, but SafeDeps does not yet install a `dotnet` command interceptor. |
 
 ## Important Non-Guarantees
 
@@ -29,6 +29,6 @@ SafeDeps does not prove that a package is safe, does not replace code review, an
 
 - The test suite still needs to be split into smaller unit, guard, integration, e2e, and UI areas.
 - npm needs broader Node/npm-version and package-behavior e2e validation before broad runtime claims.
-- NuGet needs dedicated e2e validation before it should be described as runtime protection.
-- CI still needs broader Node/npm and .NET SDK matrices before npm/NuGet can be promoted.
+- NuGet needs a dedicated `dotnet` command interception design before it should be described as runtime protection.
+- CI still needs broader Node/npm matrices before npm can be promoted beyond the first blocking slice.
 - UI templates and guard wrapper templates need continued decomposition.

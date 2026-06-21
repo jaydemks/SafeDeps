@@ -89,15 +89,16 @@ Status: completed after local gates and GitHub Actions validation. npm has a fir
 - [x] Keep npm runtime claims limited while the first blocking matrix is validated.
 - [x] Verify GitHub Actions after push with the new blocking npm runtime matrix.
 
-### 0.5.4 In Progress: NuGet Runtime Truth Work
+### 0.5.4 Completed: NuGet Runtime Truth Work
 
-Status: in progress. Goal: decide whether NuGet stays scan-first or gains a stable runtime guard claim. Current local work strengthens NuGet.Config/source mapping/private feed scanning before any runtime claim changes.
+Status: completed locally after NuGet scan/CI e2e expansion and claim review. NuGet remains a scan/CI policy gate, not a stable runtime-interception claim, because SafeDeps does not yet install a dedicated `dotnet` command wrapper or equivalent interception point.
 
 - [x] Validate package-source behavior for `NuGet.Config`, source mapping, and private feeds.
 - [x] Add lockfile and transitive package tests for representative SDK versions.
 - [x] Add e2e coverage for `dotnet add package`, restore, floating versions, and untrusted sources where feasible.
-- [ ] Decide and document whether runtime interception is supported or whether NuGet remains scan/CI policy only.
-- [ ] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.
+- [x] Decide and document whether runtime interception is supported or whether NuGet remains scan/CI policy only.
+- [x] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.
+- [ ] Verify GitHub Actions after push.
 
 ### 0.6.0 Target: Production-Grade Evidence
 

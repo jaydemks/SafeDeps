@@ -7,7 +7,7 @@ This matrix distinguishes supported scanning from runtime guard maturity. Runtim
 | Python/pip | Supported | Supported | Stable |
 | Poetry lockfiles | Supported | Not claimed | Stable for lockfile scan validation |
 | npm | Supported | Limited | First blocking runtime slice validated; broader runtime claims remain experimental |
-| NuGet/.NET | Supported | Experimental | Scan-supported only until e2e matrix is green |
+| NuGet/.NET | Supported | Not claimed | Strong scan/CI validation; no stable runtime interception claim |
 | Git submodules | Supported | Not applicable | Stable for scan checks |
 
 ## Promotion Rule
@@ -29,10 +29,10 @@ Local advisory intelligence is supported through deterministic SafeDeps and OSV-
 
 ## Current npm/NuGet Claim
 
-SafeDeps may parse npm and NuGet manifests and lockfiles, and experimental wrappers/tooling exist in the repository. npm has a limited first blocking runtime slice. Broader runtime blocking for npm and runtime blocking for NuGet must remain experimental until dedicated e2e workflows validate install-block, install-allow, shell behavior, and package-manager version behavior.
+SafeDeps may parse npm and NuGet manifests and lockfiles, and experimental wrappers/tooling exist in the repository. npm has a limited first blocking runtime slice. Broader runtime blocking for npm must remain experimental until more package-manager behavior is validated. NuGet runtime blocking is not claimed until SafeDeps installs and validates a dedicated `dotnet` wrapper or equivalent command interception point.
 
 Current validation status:
 
 - npm has required scan-validation jobs for Ubuntu/Windows and Node 20/22, plus a required first runtime guard slice for Node 22 on Ubuntu Bash and Windows PowerShell/CMD.
-- NuGet has required scan-validation jobs for Ubuntu/Windows and .NET 8 SDK.
-- NuGet runtime guard support is not promoted; `dotnet add package` needs dedicated guard tooling and e2e coverage before that claim can change.
+- NuGet has required scan-validation jobs for Ubuntu/Windows and .NET 8/9 SDKs, including exact `dotnet add package`, floating/range `dotnet add package`, untrusted `NuGet.Config` sources, and `dotnet restore --use-lock-file`.
+- NuGet runtime guard support is not promoted; `dotnet add package` runtime blocking needs dedicated guard tooling before that claim can change.
