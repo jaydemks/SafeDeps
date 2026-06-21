@@ -29,6 +29,7 @@ function Invoke-ExpectBlocked {
         Write-Error $Message
         exit 1
     }
+    $global:LASTEXITCODE = 0
 }
 
 function Write-ExactLodashManifest {
@@ -110,3 +111,5 @@ try {
 } finally {
     Write-Host "::endgroup::"
 }
+
+exit 0

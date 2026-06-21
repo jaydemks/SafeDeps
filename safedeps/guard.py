@@ -562,7 +562,6 @@ set "_should_guard=1"
 set "_scope=project"
 set "_guard_state={str(root / '.safedeps' / 'guard-state.json')}"
 set "_project_root={str(root)}"
-for /f "delims=" %%R in ('"{real_python}" -c "import json,os,sys; p=sys.argv[1]; print((json.load(open(p)).get('project_root', '') if os.path.exists(p) else ''))" "!_guard_state!"') do set "_project_root=%%R"
 set "_expected_venv={expected_venv}"
 if exist "{str(root / '.safedeps' / 'guard-state.json')}" (
   findstr /I /C:"\"protection_scope\": \"global\"" "{str(root / '.safedeps' / 'guard-state.json')}" >nul
@@ -585,12 +584,8 @@ if /I "%~1"=="uninstall" (
   echo Blocked: npm uninstall is disabled while SafeDeps guard is active.
   exit /b 2
 )
-if "%~2"=="" goto :scan
-echo %* | findstr /I /C:"@" /C:".tgz" /C:".tar.gz" /C:".zip" /C:"git+" >nul
-if errorlevel 1 (
-  echo Blocked: unpinned runtime npm install/update is not allowed. Use exact versions ^(example: package@1.2.3^).
-  exit /b 2
-)
+call :validate_npm_args %*
+if errorlevel 1 exit /b %ERRORLEVEL%
 :scan
 "{real_python}" -m safedeps.cli scan . --fail-on {fail_on}
 if errorlevel 1 (
@@ -601,6 +596,27 @@ if errorlevel 1 (
 :run
 call "!_real_npm!" %*
 exit /b %ERRORLEVEL%
+:validate_npm_args
+shift
+:validate_npm_args_loop
+if "%~1"=="" exit /b 0
+set "_tok=%~1"
+if "!_tok:~0,1!"=="-" (
+  shift
+  goto :validate_npm_args_loop
+)
+echo !_tok! | findstr /I /C:".tgz" /C:".tar.gz" /C:".zip" /C:"git+" >nul
+if not errorlevel 1 (
+  shift
+  goto :validate_npm_args_loop
+)
+echo !_tok! | findstr /I /C:"@" >nul
+if errorlevel 1 (
+  echo Blocked: unpinned runtime npm install/update is not allowed. Use exact versions ^(example: package@1.2.3^).
+  exit /b 2
+)
+shift
+goto :validate_npm_args_loop
     """
     python_wrapper = f"""#!/usr/bin/env bash
 set -euo pipefail

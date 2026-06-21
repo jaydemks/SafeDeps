@@ -1940,6 +1940,11 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert "& $RealNpm @NpmArgs" in npm_ps1
     assert 'set "_real_npm=' in npm_cmd
     assert 'call "!_real_npm!" %*' in npm_cmd
+    assert "call :validate_npm_args %*" in npm_cmd
+    assert ":validate_npm_args_loop" in npm_cmd
+    assert 'if "!_tok:~0,1!"=="-"' in npm_cmd
+    assert 'echo %* | findstr /I /C:"@"' not in npm_cmd
+    assert "json.load(open(p)).get('project_root'" not in npm_cmd
     assert 'scope="global"' in npm_wrapper
 
 
