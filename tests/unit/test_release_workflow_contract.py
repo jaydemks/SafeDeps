@@ -46,8 +46,17 @@ def test_release_dry_run_builds_artifacts_without_registry_publish():
 
     assert "if: ${{ inputs.publish == 'true' }}" not in preflight
     assert "if: ${{ inputs.publish == 'true' }}" not in release_manifest
-    assert "startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''" in attestation
-    assert "startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''" in github_release
+    assert "if: ${{ inputs.publish == 'true' }}" not in attestation
+    assert "if: ${{ inputs.publish == 'true' }}" not in github_release
+    assert "startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true'" in attestation
+    assert "startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true'" in github_release
+
+
+def test_release_dry_run_dispatch_uses_current_ref_until_publish_or_tag():
+    text = _release_workflow_text()
+
+    assert "inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref" in text
+    assert "body_path: RELEASE_NOTES_2026-06-21.md" in text
 
 
 def test_release_attestation_and_github_release_include_all_artifact_classes():

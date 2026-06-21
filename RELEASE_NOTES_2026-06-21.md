@@ -24,7 +24,7 @@ SafeDeps `0.5.0` still does not claim broad stable runtime protection for every 
 - `.venv/bin/python scripts/release/preflight.py --expected-version 0.5.0`
 - `GITHUB_REF_NAME=v0.5.0 .venv/bin/python scripts/release/preflight.py --expected-version 0.5.0 --require-tag`
 - `.venv/bin/python -m pytest tests/unit/test_docs_claims.py -q`
-- `make checks PYTHON=.venv/bin/python` passed with `346` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
+- `make checks PYTHON=.venv/bin/python` passed with `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - GitHub Actions required workflows: pending final release-candidate push validation.
 
 ## Follow-up Queue
