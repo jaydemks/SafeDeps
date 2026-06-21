@@ -54,16 +54,19 @@ Status: completed after PyPI Trusted Publishing/OIDC, release workflow SHA pinni
 - [x] Document exactly what the attestations prove and what they do not prove.
 - [x] Run a non-publishing release dry-run and one real patch release to prove the PyPI Trusted Publishing path.
 
-### 0.5.2 Planned: Package Intelligence Expansion
+### 0.5.2 Completed Locally: Package Intelligence Expansion
 
-Status: planned. Goal: make SafeDeps stronger at recognizing risky or malicious dependency changes, not only policy-shape violations.
+Status: completed locally after passing `make checks` with `355` tests and `91.88%` coverage. Verify GitHub Actions after push before marking fully complete.
 
-- [ ] Add OSV advisory ingestion behind deterministic local fixtures.
-- [ ] Add a normalized advisory model shared by pip, npm, NuGet, and local vulnerability feeds.
-- [ ] Add package age, maintainer-change, repository-link, and download/metadata anomaly signals where data is available.
-- [ ] Add malicious-package fixture datasets that are safe, synthetic, and deterministic.
-- [ ] Add policy controls for metadata-risk thresholds and advisory severities.
-- [ ] Keep online checks optional; offline deterministic checks must remain the release gate.
+- [x] Add OSV advisory ingestion behind deterministic local fixtures.
+- [x] Add a normalized advisory model shared by pip, npm, NuGet, and local vulnerability feeds.
+- [x] Match OSV-style affected version ranges with `introduced`, `fixed`, and `last_affected` events.
+- [x] Preserve advisory aliases, references, component versions, and file hints in findings.
+- [x] Add package age, maintainer-change, repository-link, and download/metadata anomaly signals where data is available.
+- [x] Add malicious-package fixture datasets that are safe, synthetic, and deterministic.
+- [x] Add policy controls for metadata-risk thresholds and advisory severities.
+- [x] Keep online checks optional; offline deterministic checks must remain the release gate.
+- [ ] Verify GitHub Actions after push.
 
 ### 0.5.3 Planned: npm Runtime Truth Work
 

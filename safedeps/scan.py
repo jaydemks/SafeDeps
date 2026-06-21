@@ -29,7 +29,7 @@ def run_scan_pipeline(
     for adapter in PACKAGE_MANAGER_ADAPTERS:
         f,c=adapter.scan(root, policy)
         findings.extend(f); components.extend(c)
-    findings.extend(load_local_vulnerability_findings(root, components))
+    findings.extend(load_local_vulnerability_findings(root, components, policy))
     if online_audit:
         findings.extend(run_online_audits(root))
     findings = apply_vulnerability_baseline(root, policy, findings)

@@ -18,7 +18,7 @@ def test_run_scan_pipeline_writes_reports_and_applies_threshold(monkeypatch, tmp
     finding = Finding("HIGH", "pip", "FLOATING_VERSION", "blocked", "requirements.txt", "requests")
     component = {"manager": "pip", "name": "requests", "version": "2.32.3"}
     monkeypatch.setattr(scan, "PACKAGE_MANAGER_ADAPTERS", [FakeScanner([finding], [component])])
-    monkeypatch.setattr(scan, "load_local_vulnerability_findings", lambda root, components: [])
+    monkeypatch.setattr(scan, "load_local_vulnerability_findings", lambda root, components, policy: [])
     monkeypatch.setattr(scan, "apply_vulnerability_baseline", lambda root, policy, findings: findings)
 
     result, outdir = scan.run_scan_pipeline(
@@ -49,7 +49,7 @@ def test_run_scan_pipeline_uses_baseline_and_online_audit(monkeypatch, tmp_path)
     scanner_finding = Finding("LOW", "pip", "LOW_SIGNAL", "low")
     audit_finding = Finding("HIGH", "npm", "NPM_AUDIT", "audit")
     monkeypatch.setattr(scan, "PACKAGE_MANAGER_ADAPTERS", [FakeScanner([scanner_finding], [])])
-    monkeypatch.setattr(scan, "load_local_vulnerability_findings", lambda root, components: [])
+    monkeypatch.setattr(scan, "load_local_vulnerability_findings", lambda root, components, policy: [])
     monkeypatch.setattr(scan, "run_online_audits", lambda root: [audit_finding])
     monkeypatch.setattr(
         scan,
@@ -71,6 +71,70 @@ def test_run_scan_pipeline_uses_baseline_and_online_audit(monkeypatch, tmp_path)
 
     assert result.ok is True
     assert [finding.rule for finding in result.findings] == ["LOW_SIGNAL"]
+
+
+def test_run_scan_pipeline_applies_osv_version_range_intelligence(monkeypatch, tmp_path):
+    (tmp_path / ".safedeps").mkdir()
+    (tmp_path / ".safedeps" / "vuln-feed.json").write_text(
+        json.dumps(
+            {
+                "vulnerabilities_osv": [
+                    {
+                        "id": "OSV-RANGE",
+                        "summary": "affected range",
+                        "database_specific": {"severity": "critical"},
+                        "affected": [
+                            {
+                                "package": {"ecosystem": "PyPI", "name": "requests"},
+                                "ranges": [
+                                    {
+                                        "events": [
+                                            {"introduced": "2.0.0"},
+                                            {"fixed": "2.32.0"},
+                                        ]
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        scan,
+        "PACKAGE_MANAGER_ADAPTERS",
+        [
+            FakeScanner(
+                components=[
+                    {
+                        "manager": "pip",
+                        "name": "requests",
+                        "version": "==2.31.0",
+                        "file": "requirements.txt",
+                    }
+                ]
+            )
+        ],
+    )
+    monkeypatch.setattr(scan, "apply_vulnerability_baseline", lambda root, policy, findings: findings)
+
+    result, _ = scan.run_scan_pipeline(
+        root=tmp_path,
+        policy_arg=None,
+        out="out",
+        fail_on="HIGH",
+        online_audit=False,
+        sarif="",
+        cyclonedx="",
+        spdx="",
+        html="",
+    )
+
+    assert result.ok is False
+    assert [finding.rule for finding in result.findings] == ["KNOWN_VULNERABILITY"]
+    assert "OSV-RANGE" in result.findings[0].message
 
 
 def test_run_online_audits_adds_high_npm_finding(monkeypatch, tmp_path):

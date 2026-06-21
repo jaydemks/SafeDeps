@@ -66,6 +66,11 @@ def test_policy_load_rejects_invalid_metadata_thresholds(tmp_path):
                 "min_package_age_days": -1,
                 "max_publisher_changes_90d": True,
                 "max_maintainer_changes_180d": "1",
+                "enable_repository_link_checks": 1,
+                "enable_download_anomaly_checks": "yes",
+                "min_downloads_30d": -1,
+                "advisory_severity_threshold": "urgent",
+                "metadata_risk_severity": 3,
             }
         ),
         encoding="utf-8",
@@ -79,6 +84,11 @@ def test_policy_load_rejects_invalid_metadata_thresholds(tmp_path):
     assert "policy.min_package_age_days must be a non-negative integer" in message
     assert "policy.max_publisher_changes_90d must be a non-negative integer" in message
     assert "policy.max_maintainer_changes_180d must be a non-negative integer" in message
+    assert "policy.enable_repository_link_checks must be true or false" in message
+    assert "policy.enable_download_anomaly_checks must be true or false" in message
+    assert "policy.min_downloads_30d must be a non-negative integer" in message
+    assert "policy.advisory_severity_threshold must be one of INFO, LOW, MEDIUM, HIGH, or CRITICAL" in message
+    assert "policy.metadata_risk_severity must be one of INFO, LOW, MEDIUM, HIGH, or CRITICAL" in message
 
 
 def test_policy_expiring_exception_matches_until_expiry():

@@ -25,6 +25,8 @@ Python/pip remains the reference quality bar. npm and NuGet should be validated 
 
 Poetry lockfile scan validation is now part of the Python ecosystem evidence. SafeDeps validates real `poetry lock` output across Poetry `1.7.1`, `1.8.5`, `2.0.1`, `2.1.4`, `2.2.1`, `2.3.4`, and `2.4.1`. This does not promote Poetry install/update runtime interception; the stable claim is lockfile scanning.
 
+Local advisory intelligence is supported through deterministic SafeDeps and OSV-style feeds. Optional metadata risk checks are available when a project provides local package metadata for age, publisher churn, maintainer changes, repository links, or download signals.
+
 ## Current npm/NuGet Claim
 
 SafeDeps may parse npm and NuGet manifests and lockfiles, and experimental wrappers/tooling exist in the repository. The stable claim is limited to scanning. Runtime blocking for npm and NuGet must remain experimental until dedicated e2e workflows validate install-block, install-allow, shell behavior, and package-manager version behavior.

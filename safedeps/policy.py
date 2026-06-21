@@ -25,9 +25,13 @@ DEFAULT_POLICY = {
   "max_publisher_changes_90d": 1,
   "enable_maintainer_change_checks": False,
   "max_maintainer_changes_180d": 1,
+  "enable_repository_link_checks": False,
+  "enable_download_anomaly_checks": False,
+  "min_downloads_30d": 25,
   "enable_vulnerability_baseline": True,
-  "vulnerability_baseline_file": ".safedeps/vuln-baseline.json"
-  ,
+  "vulnerability_baseline_file": ".safedeps/vuln-baseline.json",
+  "advisory_severity_threshold": "LOW",
+  "metadata_risk_severity": "MEDIUM",
   "exclude_paths": [
     "examples/"
   ]
@@ -132,10 +136,16 @@ def validate_policy_schema_v1(policy: object) -> list[str]:
     _validate_bool(policy, "enable_package_age_checks", issues)
     _validate_bool(policy, "enable_publisher_churn_checks", issues)
     _validate_bool(policy, "enable_maintainer_change_checks", issues)
+    _validate_bool(policy, "enable_repository_link_checks", issues)
+    _validate_bool(policy, "enable_download_anomaly_checks", issues)
 
     _validate_non_negative_int(policy, "min_package_age_days", issues)
     _validate_non_negative_int(policy, "max_publisher_changes_90d", issues)
     _validate_non_negative_int(policy, "max_maintainer_changes_180d", issues)
+    _validate_non_negative_int(policy, "min_downloads_30d", issues)
+
+    _validate_severity(policy, "advisory_severity_threshold", issues)
+    _validate_severity(policy, "metadata_risk_severity", issues)
 
     exceptions = policy.get("exceptions")
     if exceptions is not None and not isinstance(exceptions, list):
@@ -156,3 +166,14 @@ def _validate_non_negative_int(policy: dict, key: str, issues: list[str]) -> Non
         return
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         issues.append(f"policy.{key} must be a non-negative integer when present.")
+
+
+def _validate_severity(policy: dict, key: str, issues: list[str]) -> None:
+    value = policy.get(key)
+    if value is None:
+        return
+    allowed = {"INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
+    if not isinstance(value, str) or value.upper() not in allowed:
+        issues.append(
+            f"policy.{key} must be one of INFO, LOW, MEDIUM, HIGH, or CRITICAL when present."
+        )

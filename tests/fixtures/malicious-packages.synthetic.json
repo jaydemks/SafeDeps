@@ -1,0 +1,27 @@
+{
+  "description": "Synthetic SafeDeps fixture. Package names are intentionally demo-only and must not be treated as real-world intelligence.",
+  "vulnerabilities": [
+    {
+      "manager": "pip",
+      "package": "malicious-demo-package",
+      "id": "SAFEDEPS-SYNTHETIC-PIP-0001",
+      "severity": "critical",
+      "message": "Synthetic demo package used to validate local malicious-package intelligence.",
+      "aliases": ["SAFEDEPS-DEMO-MALWARE"]
+    },
+    {
+      "manager": "npm",
+      "package": "token-grabber-demo",
+      "id": "SAFEDEPS-SYNTHETIC-NPM-0001",
+      "severity": "high",
+      "message": "Synthetic demo package used to validate suspicious package intelligence."
+    },
+    {
+      "manager": "nuget",
+      "package": "SafeDeps.Demo.Malicious",
+      "id": "SAFEDEPS-SYNTHETIC-NUGET-0001",
+      "severity": "high",
+      "message": "Synthetic demo package used to validate local NuGet malicious-package intelligence."
+    }
+  ]
+}

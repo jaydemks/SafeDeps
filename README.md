@@ -743,6 +743,8 @@ Minimal example:
   "deny_packages": ["malicious-demo-package"],
   "allow_unpinned": false,
   "require_lockfiles": true,
+  "advisory_severity_threshold": "LOW",
+  "metadata_risk_severity": "MEDIUM",
   "require_expiring_exceptions": true,
   "exceptions": [
     {
@@ -799,6 +801,8 @@ SafeDeps can use local files for extra checks:
 ```
 
 The vulnerability feed can contain local package advisories. The metadata cache can be used for age, churn, and maintainer-change signals.
+
+Local advisories support a simple SafeDeps format and an OSV-style format with affected version ranges. Metadata risk checks are optional and policy-controlled; they can flag very new packages, publisher churn, maintainer changes, missing repository links, and unusually low download signals when the cache contains those fields.
 
 These files can be edited directly or from the UI.
 

@@ -8,7 +8,9 @@ from safedeps.scanners.metadata_signals import (
     MetadataSignals,
     age_finding,
     churn_finding,
+    download_anomaly_finding,
     maintainer_change_finding,
+    repository_link_finding,
 )
 from safedeps.scanners.typosquat import typosquat_finding
 
@@ -44,6 +46,8 @@ class SupplyChainSignalVerifier:
                 context.file_ref,
                 context.signals,
             ),
+            repository_link_finding(policy, context.manager, context.package, context.file_ref, context.signals),
+            download_anomaly_finding(policy, context.manager, context.package, context.file_ref, context.signals),
         ):
             if maybe_finding:
                 findings.append(maybe_finding)
