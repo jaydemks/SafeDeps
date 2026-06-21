@@ -266,6 +266,80 @@ def test_npm_scanner_manifest_lockfiles_registry_and_extractors(tmp_path):
     }
 
 
+def test_npm_scanner_detects_alias_workspace_and_source_dependency_risks(tmp_path):
+    workspace = tmp_path / "packages" / "app"
+    workspace.mkdir(parents=True)
+    (tmp_path / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "root",
+                "version": "1.0.0",
+                "workspaces": ["packages/*"],
+                "dependencies": {
+                    "alias-lodash": "npm:lodash@^4.17.21",
+                    "git-risk": "git+https://example.test/repo.git",
+                    "tar-risk": "https://example.test/pkg-1.0.0.tgz",
+                    "local-risk": "file:../local-risk",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (workspace / "package.json").write_text(
+        json.dumps({"name": "workspace-app", "version": "1.0.0", "dependencies": {"left-pad": "1.3.0"}}),
+        encoding="utf-8",
+    )
+    (tmp_path / "package-lock.json").write_text(json.dumps({"packages": {}}), encoding="utf-8")
+
+    findings, components = NpmScanner().scan(tmp_path, _policy())
+
+    assert "FLOATING_VERSION" in _rules(findings)
+    assert _rules(findings).count("DIRECT_URL") == 2
+    assert "LOCAL_PATH_DEPENDENCY" in _rules(findings)
+    assert {component["name"] for component in components} >= {"lodash", "left-pad"}
+
+
+def test_npm_scanner_dependency_helper_edges():
+    scanner = NpmScanner()
+
+    assert scanner._component_name_from_dependency("alias", "npm:@scope/pkg@1.2.3") == "@scope/pkg"
+    assert scanner._component_name_from_dependency("alias", "npm:@scope/pkg") == "@scope/pkg"
+    assert scanner._component_name_from_dependency("plain", "1.0.0") == "plain"
+    assert scanner._is_floating_version("npm:@scope/pkg@~1.0.0")
+    assert scanner._is_floating_version("npm:lodash@latest")
+    assert not scanner._is_floating_version("npm:lodash@4.17.21")
+    assert scanner._dependency_source_finding("tar-risk", "pkg-1.0.0.tgz", "package.json").rule == "DIRECT_URL"
+    assert scanner._dependency_source_finding("safe", "1.0.0", "package.json") is None
+
+
+def test_npm_scanner_missing_lockfile_allowed_registry_and_skipped_paths(tmp_path):
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "root", "version": "1.0.0", "dependencies": {"lodash": "4.17.21"}}),
+        encoding="utf-8",
+    )
+    node_modules = tmp_path / "node_modules" / "ignored"
+    node_modules.mkdir(parents=True)
+    (node_modules / "package.json").write_text(
+        json.dumps({"name": "ignored", "version": "1.0.0", "dependencies": {"bad": "latest"}}),
+        encoding="utf-8",
+    )
+    examples = tmp_path / "examples"
+    examples.mkdir()
+    (examples / "package.json").write_text(
+        json.dumps({"name": "ignored-example", "version": "1.0.0", "dependencies": {"bad": "latest"}}),
+        encoding="utf-8",
+    )
+    (tmp_path / ".npmrc").write_text("registry=https://registry.npmjs.org/\n", encoding="utf-8")
+
+    findings, components = NpmScanner().scan(
+        tmp_path,
+        _policy(require_lockfiles=True, exclude_paths=["examples/"]),
+    )
+
+    assert [finding.rule for finding in findings] == ["MISSING_LOCKFILE"]
+    assert [component["name"] for component in components] == ["lodash"]
+
+
 @pytest.mark.parametrize(
     ("filename", "content", "expected_rule"),
     [

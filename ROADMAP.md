@@ -76,7 +76,7 @@ Status: completed after local gates and GitHub Actions validation. Additional co
 
 ### 0.5.3 In Progress: npm Runtime Truth Work
 
-Status: local workflow structure and dedicated npm runtime guard e2e scripts added. Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
+Status: dedicated npm runtime guard e2e scripts added and validated by GitHub Actions. Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
 
 - [ ] Decide exact supported npm versions and OS/shell combinations.
 - [x] Extract npm runtime guard e2e coverage into dedicated Bash, PowerShell, and CMD scripts.
@@ -84,8 +84,8 @@ Status: local workflow structure and dedicated npm runtime guard e2e scripts add
 - [x] Extend generated npm guard wrappers to block guarded `npm uninstall` operations.
 - [x] Add workflow contract tests so npm runtime e2e logic stays script-based and explicit.
 - [ ] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
-- [ ] Add coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
-- [ ] Add registry/source policy tests for default registry, custom registry, and untrusted registry behavior.
+- [x] Add scan coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
+- [x] Add registry/source policy tests for default registry, custom registry, untrusted registry, and direct source dependency behavior.
 - [ ] Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
 
 ### 0.5.4 Planned: NuGet Runtime Truth Work

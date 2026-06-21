@@ -18,6 +18,8 @@ except Exception:  # pragma: no cover - optional dependency
 yaml: Any = _yaml
 
 BAD_NAME_HINTS = ["crypto", "stealer", "grabber", "token", "discord-token", "postinstall"]
+REMOTE_SOURCE_PREFIXES = ("git+", "github:", "gitlab:", "bitbucket:", "http://", "https://", "ssh://")
+REMOTE_SOURCE_SUFFIXES = (".tgz", ".tar.gz", ".zip")
 
 
 class NpmScanner(Scanner):
@@ -46,11 +48,16 @@ class NpmScanner(Scanner):
             file_ref = str(pkgfile.relative_to(root))
             for section in ["dependencies", "devDependencies", "optionalDependencies"]:
                 for name, ver in data.get(section, {}).items():
-                    components.append({"type": "library", "manager": "npm", "name": name, "version": ver, "scope": section})
+                    raw_version = str(ver).strip()
+                    component_name = self._component_name_from_dependency(name, raw_version)
+                    components.append({"type": "library", "manager": "npm", "name": component_name, "version": ver, "scope": section})
                     if policy.is_denied(name):
                         findings.append(Finding("CRITICAL", "npm", "DENYLIST", f"Denied package: {name}", file_ref, name, fix="Remove or replace this dependency."))
-                    self._append_supply_chain_signals(policy, findings, signals, "npm", name, file_ref)
-                    if str(ver).startswith(("^", "~", "*")) or str(ver).lower() == "latest":
+                    self._append_supply_chain_signals(policy, findings, signals, "npm", component_name, file_ref)
+                    source_finding = self._dependency_source_finding(name, raw_version, file_ref)
+                    if source_finding:
+                        findings.append(source_finding)
+                    if self._is_floating_version(raw_version):
                         sev = severity_for_exception(policy, "npm", name, "FLOATING_VERSION")
                         findings.append(Finding(sev, "npm", "FLOATING_VERSION", f"Floating npm version for {name}: {ver}", file_ref, name, fix="Pin an exact version and commit package-lock.json."))
                     if any(h in name.lower() for h in BAD_NAME_HINTS):
@@ -78,6 +85,50 @@ class NpmScanner(Scanner):
 
     def _append_supply_chain_signals(self, policy, findings: list[Finding], signals: MetadataSignals, manager: str, name: str, file_ref: str):
         findings.extend(verify_package(policy, manager, name, file_ref, signals))
+
+    def _component_name_from_dependency(self, name: str, version: str) -> str:
+        if version.startswith("npm:"):
+            target = version[4:]
+            if target.startswith("@"):
+                at = target.rfind("@")
+                return target[:at] if at > 0 else target
+            return target.split("@", 1)[0]
+        return name
+
+    def _is_floating_version(self, version: str) -> bool:
+        raw = version.strip()
+        if raw.startswith("npm:"):
+            raw = raw[4:]
+            if raw.startswith("@"):
+                at = raw.rfind("@")
+                raw = raw[at + 1:] if at > 0 else raw
+            elif "@" in raw:
+                raw = raw.split("@", 1)[1]
+        return raw.startswith(("^", "~", "*")) or raw.lower() == "latest"
+
+    def _dependency_source_finding(self, name: str, version: str, file_ref: str) -> Finding | None:
+        raw = version.strip()
+        if raw.startswith("file:"):
+            return Finding(
+                "MEDIUM",
+                "npm",
+                "LOCAL_PATH_DEPENDENCY",
+                f"Local npm path dependency for {name}: {raw}",
+                file_ref,
+                name,
+                fix="Review local path dependencies and commit lockfiles.",
+            )
+        if raw.startswith(REMOTE_SOURCE_PREFIXES) or raw.endswith(REMOTE_SOURCE_SUFFIXES):
+            return Finding(
+                "HIGH",
+                "npm",
+                "DIRECT_URL",
+                f"Direct or VCS npm dependency requires explicit review for {name}: {raw}",
+                file_ref,
+                name,
+                fix="Prefer registry packages with exact versions and committed lockfiles.",
+            )
+        return None
 
     def _scan_discovered_lockfiles(self, root: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
         seen: set[Path] = set()
