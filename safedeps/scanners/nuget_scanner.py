@@ -74,9 +74,15 @@ class NugetScanner(Scanner):
                 continue
             self._scan_packages_lock(lockfile, root, policy, findings, components, signals)
 
+        config_files: list[Path] = []
         for cfg in [root / "NuGet.Config", root / "nuget.config"]:
-            if cfg.exists():
-                self._scan_nuget_config(cfg, policy, findings)
+            if not cfg.exists():
+                continue
+            if any(cfg.samefile(existing) for existing in config_files):
+                continue
+            config_files.append(cfg)
+        for cfg in config_files:
+            self._scan_nuget_config(cfg, policy, findings)
 
         if policy.data.get("require_lockfiles", True) and has_nuget_manifest and not any(iter_files(root, "packages.lock.json")):
             findings.append(Finding("MEDIUM", "nuget", "MISSING_LOCKFILE", ".NET project found but no packages.lock.json detected.", fix="Enable RestorePackagesWithLockFile and commit packages.lock.json."))
