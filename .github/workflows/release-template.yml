@@ -327,7 +327,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref_name }}
-          name: ${{ inputs.release_version && format('SafeDeps {0} Beta Preview', inputs.release_version) || github.ref_name }}
+          name: ${{ inputs.release_version && format('SafeDeps {0} Beta Preview - Scoped Policy Gate', inputs.release_version) || format('{0} Beta Preview - Scoped Policy Gate', github.ref_name) }}
           body_path: RELEASE_NOTES_2026-06-21.md
           prerelease: true
           overwrite_files: true
