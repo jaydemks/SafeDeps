@@ -41,9 +41,9 @@ Suggested release ladder:
 
 Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release is ready.
 
-### 0.5.1 In Progress: Release Trust Hardening
+### 0.5.1 Completed: Release Trust Hardening
 
-Status: PyPI Trusted Publishing/OIDC is proven by the `v0.5.1` tag workflow. GitHub Actions SHA pinning is prepared locally and must be verified by GitHub Actions after push.
+Status: completed after PyPI Trusted Publishing/OIDC, release workflow SHA pinning, local contract tests, and GitHub Actions validation.
 
 - [x] Configure PyPI Trusted Publishing/OIDC for the release workflow.
 - [x] Remove the PyPI API-token/Twine fallback from the release workflow.
