@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -77,11 +76,7 @@ class NugetScanner(Scanner):
 
         for cfg in [root / "NuGet.Config", root / "nuget.config"]:
             if cfg.exists():
-                txt = cfg.read_text(errors="ignore")
-                urls = re.findall(r'value=["\']([^"\']+)["\']', txt)
-                for url in urls:
-                    if url.startswith("http") and url not in policy.data["allowed_registries"].get("nuget", []):
-                        findings.append(Finding("CRITICAL", "nuget", "UNTRUSTED_REGISTRY", f"NuGet source not in allowlist: {url}", cfg.name, fix="Use approved source or add a temporary exception."))
+                self._scan_nuget_config(cfg, policy, findings)
 
         if policy.data.get("require_lockfiles", True) and has_nuget_manifest and not any(iter_files(root, "packages.lock.json")):
             findings.append(Finding("MEDIUM", "nuget", "MISSING_LOCKFILE", ".NET project found but no packages.lock.json detected.", fix="Enable RestorePackagesWithLockFile and commit packages.lock.json."))
@@ -90,6 +85,34 @@ class NugetScanner(Scanner):
 
     def _append_supply_chain_signals(self, policy, findings: list[Finding], signals: MetadataSignals, manager: str, name: str, file_ref: str):
         findings.extend(verify_package(policy, manager, name, file_ref, signals))
+
+    def _scan_nuget_config(self, path: Path, policy, findings: list[Finding]):
+        try:
+            tree = ET.parse(path)
+        except Exception as e:
+            findings.append(Finding("HIGH", "nuget", "INVALID_NUGET_CONFIG", f"Cannot parse NuGet.Config: {e}", path.name))
+            return
+
+        source_keys: set[str] = set()
+        allowed_sources = set(policy.data["allowed_registries"].get("nuget", []))
+        for source in tree.findall(".//packageSources/add"):
+            key = str(source.attrib.get("key") or "").strip()
+            url = str(source.attrib.get("value") or "").strip()
+            if key:
+                source_keys.add(key)
+            if url.startswith("http") and url not in allowed_sources:
+                findings.append(Finding("CRITICAL", "nuget", "UNTRUSTED_REGISTRY", f"NuGet source not in allowlist: {url}", path.name, fix="Use approved source or add a temporary exception."))
+
+        for mapped_source in tree.findall(".//packageSourceMapping/packageSource"):
+            key = str(mapped_source.attrib.get("key") or "").strip()
+            patterns = [
+                str(pattern.attrib.get("pattern") or "").strip()
+                for pattern in mapped_source.findall("package")
+            ]
+            if not key or key not in source_keys:
+                findings.append(Finding("HIGH", "nuget", "INVALID_SOURCE_MAPPING", f"NuGet source mapping references unknown source: {key or '(missing)'}", path.name, fix="Map packages only to configured packageSources."))
+            if not any(patterns):
+                findings.append(Finding("HIGH", "nuget", "INVALID_SOURCE_MAPPING", f"NuGet source mapping for {key or '(missing)'} has no package patterns.", path.name, fix="Add at least one package pattern for each mapped source."))
 
     def _scan_directory_packages_props(self, path: Path, policy, findings: list[Finding], components: list[dict], signals: MetadataSignals):
         try:
@@ -154,8 +177,14 @@ class NugetScanner(Scanner):
                 if isinstance(meta, dict):
                     resolved = str(meta.get("resolved", "")).strip()
                     requested = str(meta.get("requested", "")).strip()
+                    dependency_type = str(meta.get("type", "")).strip()
+                else:
+                    dependency_type = ""
                 version = resolved or requested
-                components.append({"type": "library", "manager": "nuget", "name": name.strip(), "version": version, "scope": f"packages.lock.json:{tfm}"})
+                scope = f"packages.lock.json:{tfm}"
+                if dependency_type:
+                    scope = f"{scope}:{dependency_type}"
+                components.append({"type": "library", "manager": "nuget", "name": name.strip(), "version": version, "scope": scope})
                 if policy.is_denied(name):
                     findings.append(Finding("CRITICAL", "nuget", "DENYLIST", f"Denied package: {name}", file_ref, name, fix="Remove or replace this dependency."))
                 self._append_supply_chain_signals(policy, findings, signals, "nuget", name, file_ref)

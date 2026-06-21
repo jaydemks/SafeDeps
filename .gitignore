@@ -17,6 +17,7 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+Result.md
 packages/dotnet-tool/obj/
 packages/dotnet-tool/bin/
 examples/**/obj/

@@ -15,7 +15,7 @@ This is useful when developers, scripts, or AI coding agents can add packages to
 
 SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
 
-SafeDeps `0.5.1` is a **Beta Preview**: Python/pip and Poetry lockfile scanning are the strongest tested paths, npm and NuGet scanning are available, and npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
+SafeDeps `0.5.1` is a **Beta Preview**: Python/pip and Poetry lockfile scanning are the strongest tested paths, npm and NuGet scanning are available, and npm runtime protection has a limited first blocking slice. Broader npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
 
 ## 90-second quickstart
 
@@ -87,7 +87,7 @@ SafeDeps is strongest today for Python and pip workflows. The current release li
 | `python -m pip` runtime guard | Tested |
 | Local web UI | Tested for guard toggles and scan flows |
 | npm scanning | Supported |
-| npm runtime guard | Experimental until OS/shell/npm e2e matrix is green |
+| npm runtime guard | Limited first blocking slice; broader claim still experimental |
 | NuGet/.NET scanning | Supported |
 | NuGet/.NET runtime flows | Experimental until OS/SDK e2e matrix is green |
 | Git submodule checks | Supported |
@@ -104,7 +104,7 @@ PyPI publishing is available:
 pip install safedeps
 ```
 
-The npm wrapper and .NET tool wrapper exist in this repository, but they are not published to the public npm or NuGet registries in this release. npm and NuGet runtime protection are not production-grade claims yet. Treat them as experimental until their e2e compatibility matrices are green.
+The npm wrapper and .NET tool wrapper exist in this repository, but they are not published to the public npm or NuGet registries in this release. npm runtime protection is validated only for a limited first slice; npm and NuGet runtime protection are not production-grade claims yet.
 
 ## Install
 

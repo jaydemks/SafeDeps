@@ -13,7 +13,7 @@ SafeDeps does not prove that a package is safe, does not replace code review, an
 | `python -m pip` runtime guard | Stable | Intended to block common shell-wrapper bypasses. |
 | Local web UI | Stable for core guard flows | Guard setup, toggles, scan flow, and dependency tables need continued visual QA. |
 | npm scanning | Supported | Manifest and lockfile checks are in scope. |
-| npm runtime guard | Experimental | No production-grade runtime claim until OS, shell, and npm-version e2e coverage is green. |
+| npm runtime guard | Limited | First blocking slice validated for Node 22 on Ubuntu Bash and Windows PowerShell/CMD; no broad production-grade runtime claim yet. |
 | NuGet/.NET scanning | Supported | Project, props, config, and lockfile checks are in scope. |
 | NuGet/.NET runtime guard | Experimental | No production-grade runtime claim until OS and .NET SDK e2e coverage is green. |
 
@@ -28,6 +28,7 @@ SafeDeps does not prove that a package is safe, does not replace code review, an
 ## Current Engineering Risks
 
 - The test suite still needs to be split into smaller unit, guard, integration, e2e, and UI areas.
-- npm and NuGet need dedicated e2e validation before they should be described as runtime protections.
-- CI still needs Node/npm and .NET SDK matrices before npm/NuGet can be promoted.
+- npm needs broader Node/npm-version and package-behavior e2e validation before broad runtime claims.
+- NuGet needs dedicated e2e validation before it should be described as runtime protection.
+- CI still needs broader Node/npm and .NET SDK matrices before npm/NuGet can be promoted.
 - UI templates and guard wrapper templates need continued decomposition.

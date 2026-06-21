@@ -25,7 +25,7 @@ SafeDeps is strongest today for Python/pip:
 - local UI workflows for scan and guard setup;
 - CI-friendly JSON, HTML, SARIF, CycloneDX, and SPDX outputs.
 
-The strongest claim is scoped to tested local dependency policy gates. SafeDeps does not claim stable npm runtime protection, NuGet runtime protection, or public registry publishing until those areas have their own green, blocking evidence.
+The strongest claim is scoped to tested local dependency policy gates. SafeDeps has a limited first npm runtime guard slice, but does not claim broad stable npm runtime protection, NuGet runtime protection, or public registry publishing until those areas have their own green, blocking evidence.
 
 ## Top Frontier Baseline
 
@@ -40,11 +40,11 @@ Current status against that baseline:
 | Poetry lockfile validation | Strong for scanning | Real `poetry lock` output is validated across the supported Poetry matrix. Poetry install/update runtime interception is not claimed. |
 | Static analysis | Stronger than beta baseline | Ruff and mypy are active with stricter rules, plus coverage, build, package, and smoke checks. |
 | Release trust | Contract-tested, not fully promoted | Manifest, dry-run, publish gates, and artifact classes are covered. Trusted Publishing and public registry publishing are not promoted until proven by release runs. |
-| npm and NuGet runtime protection | Experimental | Scanning is supported; runtime blocking remains outside stable claims. |
+| npm and NuGet runtime protection | Limited/experimental | npm has a first blocking runtime slice; NuGet runtime blocking remains outside stable claims. |
 
 ## Experimental Areas
 
-npm and NuGet scanning are supported, but runtime protection remains experimental until their OS, shell, and package-manager e2e matrices are green.
+npm and NuGet scanning are supported. npm runtime protection is limited to the first validated blocking slice; broader npm and NuGet runtime protection remains experimental until their OS, shell, and package-manager e2e matrices are green.
 
 ## When To Use SafeDeps
 

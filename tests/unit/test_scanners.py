@@ -388,8 +388,9 @@ def test_nuget_scanner_manifests_lock_registry_and_floating_versions(tmp_path):
             {
                 "dependencies": {
                     "net8.0": {
-                        "Locked.Package": {"resolved": "1.2.3"},
-                        "Requested.Package": {"requested": "2.0.0"},
+                        "Locked.Package": {"type": "Direct", "resolved": "1.2.3"},
+                        "Requested.Package": {"type": "Transitive", "requested": "2.0.0"},
+                        "Floating.Locked.Package": {"type": "Direct", "requested": "[1.0.0,2.0.0)", "resolved": "1.5.0"},
                     }
                 }
             }
@@ -414,7 +415,9 @@ def test_nuget_scanner_manifests_lock_registry_and_floating_versions(tmp_path):
         "Legacy.Package",
         "Locked.Package",
         "Requested.Package",
+        "Floating.Locked.Package",
     }
+    assert any(component.get("scope") == "packages.lock.json:net8.0:Transitive" for component in components)
 
 
 @pytest.mark.parametrize(
@@ -440,3 +443,45 @@ def test_nuget_scanner_invalid_packages_lock_shape(tmp_path):
     findings, _ = NugetScanner().scan(tmp_path, _policy())
 
     assert "INVALID_PACKAGES_LOCK" in _rules(findings)
+
+
+def test_nuget_scanner_source_mapping_and_private_feeds(tmp_path):
+    policy = _policy(
+        allowed_registries={
+            "nuget": [
+                "https://api.nuget.org/v3/index.json",
+                "https://nuget.internal.example/v3/index.json",
+            ]
+        },
+        require_lockfiles=False,
+    )
+    (tmp_path / "NuGet.Config").write_text(
+        """
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="internal" value="https://nuget.internal.example/v3/index.json" />
+    <add key="evil" value="https://evil.example/v3/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <packageSource key="nuget.org">
+      <package pattern="Newtonsoft.*" />
+    </packageSource>
+    <packageSource key="missing">
+      <package pattern="Internal.*" />
+    </packageSource>
+    <packageSource key="internal" />
+  </packageSourceMapping>
+</configuration>
+""".strip(),
+        encoding="utf-8",
+    )
+
+    findings, _ = NugetScanner().scan(tmp_path, policy)
+
+    assert "UNTRUSTED_REGISTRY" in _rules(findings)
+    assert [finding.rule for finding in findings].count("INVALID_SOURCE_MAPPING") == 2
+    assert not any(
+        finding.rule == "UNTRUSTED_REGISTRY" and "nuget.internal.example" in finding.message
+        for finding in findings
+    )

@@ -74,9 +74,9 @@ Status: completed after local gates and GitHub Actions validation. Additional co
 - [x] Raise Git submodule scanning to `100.00%` line and branch coverage.
 - [x] Verify GitHub Actions after push.
 
-### 0.5.3 In Progress: npm Runtime Truth Work
+### 0.5.3 Completed: npm Runtime Truth Work
 
-Status: dedicated npm runtime guard e2e scripts and source-policy scans added. Current local block promotes npm runtime e2e from diagnostic to blocking for Bash, PowerShell, and CMD; local `make checks` passed with `386` tests and `93.55%` coverage. Verify GitHub Actions after push before changing public claims.
+Status: completed after local gates and GitHub Actions validation. npm has a first blocking runtime guard slice for Node/npm from Actions `setup-node` 22 on Ubuntu Bash and Windows PowerShell/CMD. Keep broader npm runtime claims limited until more Node/npm versions and package-manager behaviors are validated.
 
 - [x] Decide exact supported npm versions and OS/shell combinations for the first blocking slice: Node/npm from Actions `setup-node` 22 on Ubuntu Bash and Windows PowerShell/CMD.
 - [x] Extract npm runtime guard e2e coverage into dedicated Bash, PowerShell, and CMD scripts.
@@ -86,15 +86,15 @@ Status: dedicated npm runtime guard e2e scripts and source-policy scans added. C
 - [x] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
 - [x] Add scan coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
 - [x] Add registry/source policy tests for default registry, custom registry, untrusted registry, and direct source dependency behavior.
-- [x] Keep npm runtime claims limited while the new blocking matrix awaits GitHub Actions validation.
-- [ ] Verify GitHub Actions after push with the new blocking npm runtime matrix.
+- [x] Keep npm runtime claims limited while the first blocking matrix is validated.
+- [x] Verify GitHub Actions after push with the new blocking npm runtime matrix.
 
-### 0.5.4 Planned: NuGet Runtime Truth Work
+### 0.5.4 In Progress: NuGet Runtime Truth Work
 
-Status: planned. Goal: decide whether NuGet stays scan-first or gains a stable runtime guard claim.
+Status: in progress. Goal: decide whether NuGet stays scan-first or gains a stable runtime guard claim. Current local work strengthens NuGet.Config/source mapping/private feed scanning before any runtime claim changes.
 
-- [ ] Validate package-source behavior for `NuGet.Config`, source mapping, and private feeds.
-- [ ] Add lockfile and transitive package tests for representative SDK versions.
+- [x] Validate package-source behavior for `NuGet.Config`, source mapping, and private feeds.
+- [x] Add lockfile and transitive package tests for representative SDK versions.
 - [ ] Add e2e coverage for `dotnet add package`, restore, floating versions, and untrusted sources where feasible.
 - [ ] Decide and document whether runtime interception is supported or whether NuGet remains scan/CI policy only.
 - [ ] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.

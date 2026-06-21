@@ -45,7 +45,7 @@ def test_public_docs_keep_unproven_claims_limited():
 
     assert "public registry publishing until those areas have their own green, blocking evidence" in text
     assert "Trusted Publishing" in text
-    assert "Runtime blocking for npm and NuGet must remain experimental" in text
+    assert "Broader runtime blocking for npm and runtime blocking for NuGet must remain experimental" in text
 
 
 def test_comparison_scopes_strongest_claims():
@@ -54,7 +54,7 @@ def test_comparison_scopes_strongest_claims():
     assert "tested local dependency policy gates" in text
     assert "Top Frontier Baseline" in text
     assert "private top-frontier baseline" in text
-    assert "does not claim stable npm runtime protection" in text
+    assert "does not claim broad stable npm runtime protection" in text
 
 
 def test_ecosystem_support_keeps_poetry_and_registry_claims_honest():
@@ -62,7 +62,7 @@ def test_ecosystem_support_keeps_poetry_and_registry_claims_honest():
 
     assert "| Poetry lockfiles | Supported | Not claimed | Stable for lockfile scan validation |" in text
     assert "This does not promote Poetry install/update runtime interception" in text
-    assert "Runtime blocking for npm and NuGet must remain experimental" in text
+    assert "Broader runtime blocking for npm and runtime blocking for NuGet must remain experimental" in text
 
 
 def test_public_docs_do_not_link_private_comparison_artifacts():
