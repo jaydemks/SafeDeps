@@ -42,7 +42,7 @@ python -m pip install --upgrade pip build
 python -m build
 ```
 
-Publish (current `0.4.0` Beta Preview stabilization path: API token fallback only). Do not claim PyPI Trusted Publishing/OIDC until the release workflow has been validated from a non-publishing dry run and the PyPI trusted publisher configuration is confirmed.
+Publish (current `0.5.0` Beta Preview path: API token fallback only unless Trusted Publishing is explicitly verified). Do not claim PyPI Trusted Publishing/OIDC until the release workflow has been validated from a non-publishing dry run and the PyPI trusted publisher configuration is confirmed.
 
 ## npm Wrapper
 
@@ -73,7 +73,7 @@ dotnet nuget push artifacts/dotnet/*.nupkg --source https://api.nuget.org/v3/ind
 
 Workflow: `.github/workflows/release-template.yml`
 
-Status for `0.4.0`: release workflow scaffold exists, but publishing and attestation paths must be validated before they are treated as production release guarantees.
+Status for `0.5.0`: release workflow scaffold exists, but publishing and attestation paths must be validated before they are treated as production release guarantees.
 
 - `publish=false`:
   - build + artifact validation only
