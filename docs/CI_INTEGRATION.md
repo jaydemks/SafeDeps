@@ -89,9 +89,11 @@ The npm validation workflow currently checks:
 
 The NuGet validation workflow currently checks:
 
-- floating or range `PackageReference` scan failure;
-- pinned `PackageReference` scan pass;
-- `Directory.Packages.props` central package management scan pass.
+- `dotnet add package` with an exact `PackageReference` scan pass;
+- `dotnet add package` with a floating/range `PackageReference` scan failure;
+- untrusted `NuGet.Config` package source scan failure;
+- `dotnet restore --use-lock-file` creation of `packages.lock.json` followed by scan pass;
+- .NET 8 and .NET 9 SDK coverage across Ubuntu and Windows.
 
 ## Promotion Gates Still Missing
 
@@ -103,7 +105,7 @@ npm runtime support should not be promoted beyond the first blocking slice until
 
 NuGet runtime support should not be promoted until CI includes:
 
-- `dotnet add package` blocked when unsafe/unapproved;
-- allowed pinned `PackageReference` flows;
-- `packages.lock.json` or restore-lock behavior where applicable;
+- a project decision to install and maintain a real `dotnet` runtime wrapper or equivalent interception point;
+- `dotnet add package` blocked at command time when unsafe/unapproved;
+- allowed pinned `PackageReference` runtime flows;
 - runtime guard tooling for `dotnet add package`, if the project chooses to support it.

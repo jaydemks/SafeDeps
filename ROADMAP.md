@@ -95,7 +95,7 @@ Status: in progress. Goal: decide whether NuGet stays scan-first or gains a stab
 
 - [x] Validate package-source behavior for `NuGet.Config`, source mapping, and private feeds.
 - [x] Add lockfile and transitive package tests for representative SDK versions.
-- [ ] Add e2e coverage for `dotnet add package`, restore, floating versions, and untrusted sources where feasible.
+- [x] Add e2e coverage for `dotnet add package`, restore, floating versions, and untrusted sources where feasible.
 - [ ] Decide and document whether runtime interception is supported or whether NuGet remains scan/CI policy only.
 - [ ] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.
 

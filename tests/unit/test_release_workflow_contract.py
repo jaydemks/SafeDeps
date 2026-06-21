@@ -10,6 +10,7 @@ from scripts.release.create_release_manifest import artifact_path, collect_files
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-template.yml"
 NPM_E2E_WORKFLOW = ROOT / ".github" / "workflows" / "e2e-npm.yml"
+NUGET_E2E_WORKFLOW = ROOT / ".github" / "workflows" / "e2e-nuget.yml"
 WORKFLOWS_DIR = ROOT / ".github" / "workflows"
 
 
@@ -19,6 +20,10 @@ def _release_workflow_text() -> str:
 
 def _npm_e2e_workflow_text() -> str:
     return NPM_E2E_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _nuget_e2e_workflow_text() -> str:
+    return NUGET_E2E_WORKFLOW.read_text(encoding="utf-8")
 
 
 def _workflow_texts() -> dict[str, str]:
@@ -132,6 +137,24 @@ def test_npm_runtime_guard_workflow_uses_dedicated_e2e_scripts():
         assert "npm update lodash" in script_text
         assert "npm uninstall lodash" in script_text
         assert "postinstall" in script_text
+
+
+def test_nuget_scan_workflow_uses_dedicated_e2e_scripts():
+    text = _nuget_e2e_workflow_text()
+    scan_block = _job_block(text, "scan")
+
+    assert "continue-on-error: true" not in scan_block
+    assert "bash scripts/e2e/nuget_scan_bash.sh" in scan_block
+    assert "./scripts/e2e/nuget_scan_pwsh.ps1" in scan_block
+
+    for script_name in ("nuget_scan_bash.sh", "nuget_scan_pwsh.ps1"):
+        script_text = (ROOT / "scripts" / "e2e" / script_name).read_text(encoding="utf-8")
+        assert "dotnet add package Newtonsoft.Json --version 13.0.3 --no-restore" in script_text
+        assert 'dotnet add package Newtonsoft.Json --version "[13.0.1,14.0.0)" --no-restore' in script_text
+        assert "dotnet restore --use-lock-file --source https://api.nuget.org/v3/index.json" in script_text
+        assert "NuGet.Config" in script_text
+        assert "https://evil.example/v3/index.json" in script_text
+        assert "packages.lock.json" in script_text
 
 
 def test_release_manifest_collects_python_npm_and_nuget_artifacts(tmp_path):
