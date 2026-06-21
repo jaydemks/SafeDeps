@@ -480,7 +480,7 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ] || [ "${{1:-}}" = "un
     exit 2
   fi
 fi
-exec "${{REAL_NPM}}" "$@"
+exec "${{REAL_NPM}}" "$sub" "$@"
     """
     npm_ps1 = f"""$NpmArgs = $args
 $ErrorActionPreference = "Stop"

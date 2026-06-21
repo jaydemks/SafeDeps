@@ -6,6 +6,7 @@ python_bin="${PYTHON_BIN:-python}"
 
 activate_guard() {
   local project="$1"
+  echo "::group::activate ${project##*/}"
   mkdir -p "$project"
   cd "$project"
   npm init -y
@@ -13,6 +14,8 @@ activate_guard() {
   # shellcheck disable=SC1091
   source ./.safedeps/activate.sh
   hash -r
+  command -v npm
+  echo "::endgroup::"
 }
 
 assert_blocked() {
@@ -25,28 +28,35 @@ assert_blocked() {
 }
 
 test_unpinned_install_policy() {
+  echo "::group::test_unpinned_install_policy"
   local project="$runner_temp/safedeps-npm-runtime-install"
   activate_guard "$project"
   assert_blocked "Expected unpinned npm install to be blocked." npm install lodash
   npm install lodash@4.17.21 --ignore-scripts
+  echo "::endgroup::"
 }
 
 test_package_lock_policy() {
+  echo "::group::test_package_lock_policy"
   local project="$runner_temp/safedeps-npm-runtime-lockfile"
   activate_guard "$project"
   npm install lodash@4.17.21 --package-lock-only --ignore-scripts
   test -f package-lock.json
   "$python_bin" -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+  echo "::endgroup::"
 }
 
 test_update_policy() {
+  echo "::group::test_update_policy"
   local project="$runner_temp/safedeps-npm-runtime-update"
   activate_guard "$project"
   npm install lodash@4.17.21 --package-lock-only --ignore-scripts
   assert_blocked "Expected unpinned npm update to be blocked." npm update lodash
+  echo "::endgroup::"
 }
 
 test_lifecycle_script_policy() {
+  echo "::group::test_lifecycle_script_policy"
   local project="$runner_temp/safedeps-npm-runtime-lifecycle"
   activate_guard "$project"
   "$python_bin" - <<'PY'
@@ -60,13 +70,16 @@ Path("package.json").write_text(json.dumps({
 }), encoding="utf-8")
 PY
   assert_blocked "Expected npm install script project to be blocked." npm install --package-lock-only
+  echo "::endgroup::"
 }
 
 test_uninstall_policy() {
+  echo "::group::test_uninstall_policy"
   local project="$runner_temp/safedeps-npm-runtime-uninstall"
   activate_guard "$project"
   npm install lodash@4.17.21 --ignore-scripts
   assert_blocked "Expected npm uninstall to be blocked by scan policy." npm uninstall lodash
+  echo "::endgroup::"
 }
 
 test_unpinned_install_policy
