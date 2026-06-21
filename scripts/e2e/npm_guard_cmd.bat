@@ -16,7 +16,7 @@ if %ERRORLEVEL% EQU 0 (
   echo Expected unpinned npm install to be blocked.
   exit /b 1
 )
-call npm install lodash@4.17.21 --ignore-scripts
+call npm install lodash@4.17.21 --save-exact --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-lockfile"
@@ -28,7 +28,7 @@ if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 python -m safedeps.cli setup . --install-scope system --protection-scope project
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 call .safedeps\activate.bat
-call npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+call npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 if not exist package-lock.json (
   echo Expected package-lock.json to be created.
@@ -46,7 +46,7 @@ if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 python -m safedeps.cli setup . --install-scope system --protection-scope project
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 call .safedeps\activate.bat
-call npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+call npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 call npm update lodash
 if %ERRORLEVEL% EQU 0 (
@@ -90,7 +90,7 @@ if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 python -m safedeps.cli setup . --install-scope system --protection-scope project
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 call .safedeps\activate.bat
-call npm install lodash@4.17.21 --ignore-scripts
+call npm install lodash@4.17.21 --save-exact --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 call npm uninstall lodash
 if %ERRORLEVEL% EQU 0 (

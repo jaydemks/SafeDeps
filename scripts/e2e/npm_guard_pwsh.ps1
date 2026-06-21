@@ -35,7 +35,7 @@ Write-Host "::group::test_unpinned_install_policy"
 try {
     New-GuardedNpmProject "safedeps-npm-runtime-install" | Out-Null
     Invoke-ExpectBlocked "Expected unpinned npm install to be blocked." { npm install lodash }
-    npm install lodash@4.17.21 --ignore-scripts
+    npm install lodash@4.17.21 --save-exact --ignore-scripts
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } finally {
     Write-Host "::endgroup::"
@@ -44,7 +44,7 @@ try {
 Write-Host "::group::test_package_lock_policy"
 try {
     New-GuardedNpmProject "safedeps-npm-runtime-lockfile" | Out-Null
-    npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+    npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     if (-not (Test-Path package-lock.json)) {
         Write-Error "Expected package-lock.json to be created."
@@ -59,7 +59,7 @@ try {
 Write-Host "::group::test_update_policy"
 try {
     New-GuardedNpmProject "safedeps-npm-runtime-update" | Out-Null
-    npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+    npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Invoke-ExpectBlocked "Expected unpinned npm update to be blocked." { npm update lodash }
 } finally {
@@ -89,7 +89,7 @@ try {
 Write-Host "::group::test_uninstall_policy"
 try {
     New-GuardedNpmProject "safedeps-npm-runtime-uninstall" | Out-Null
-    npm install lodash@4.17.21 --ignore-scripts
+    npm install lodash@4.17.21 --save-exact --ignore-scripts
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Invoke-ExpectBlocked "Expected npm uninstall to be blocked by scan policy." { npm uninstall lodash }
 } finally {
