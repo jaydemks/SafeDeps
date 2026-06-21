@@ -26,7 +26,7 @@ def test_release_publish_jobs_are_explicitly_gated_and_skippable():
 
     for job in ("publish-pypi", "publish-npm", "publish-nuget"):
         block = _job_block(text, job)
-        assert "if: ${{ inputs.publish == 'true' }}" in block
+        assert "if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true' }}" in block
 
     assert "PYPI_API_TOKEN is not configured. Skipping PyPI publish." in text
     assert "NPM_TOKEN is not configured. Skipping npm publish." in text
@@ -43,6 +43,7 @@ def test_release_dry_run_builds_artifacts_without_registry_publish():
     release_manifest = _job_block(text, "release-manifest")
     attestation = _job_block(text, "attest-build-provenance")
     github_release = _job_block(text, "github-release")
+    publish_pypi = _job_block(text, "publish-pypi")
 
     assert "if: ${{ inputs.publish == 'true' }}" not in preflight
     assert "if: ${{ inputs.publish == 'true' }}" not in release_manifest
@@ -50,6 +51,7 @@ def test_release_dry_run_builds_artifacts_without_registry_publish():
     assert "if: ${{ inputs.publish == 'true' }}" not in github_release
     assert "startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true'" in attestation
     assert "startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true'" in github_release
+    assert "startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true'" in publish_pypi
 
 
 def test_release_dry_run_dispatch_uses_current_ref_until_publish_or_tag():
