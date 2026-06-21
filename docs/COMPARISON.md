@@ -20,9 +20,27 @@ SafeDeps is strongest today for Python/pip:
 
 - project scanning;
 - `pip` and `python -m pip` guard paths;
+- Poetry lockfile scan validation across the supported Poetry matrix;
 - policy-driven blocking for unpinned installs, denied packages, untrusted registries, direct URLs, and known vulnerability signals;
 - local UI workflows for scan and guard setup;
 - CI-friendly JSON, HTML, SARIF, CycloneDX, and SPDX outputs.
+
+The strongest claim is scoped to tested local dependency policy gates. SafeDeps does not claim stable npm runtime protection, NuGet runtime protection, or public registry publishing until those areas have their own green, blocking evidence.
+
+## Top Frontier Baseline
+
+SafeDeps uses a private top-frontier baseline to judge release readiness. The baseline is not a public competitor comparison; it is an internal quality bar for what a high-trust dependency gate should prove before stronger claims are made.
+
+Current status against that baseline:
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Blocking CI gates | Strong | Stable quality and pip/Poetry e2e gates are expected to be green and blocking. |
+| Python/pip guard coverage | Strong | Covered across OS, shell, Python, pip versions, requirements, constraints, direct URLs, indexes, local installs, editable installs, uninstall, and bypass paths. |
+| Poetry lockfile validation | Strong for scanning | Real `poetry lock` output is validated across the supported Poetry matrix. Poetry install/update runtime interception is not claimed. |
+| Static analysis | Stronger than beta baseline | Ruff and mypy are active with stricter rules, plus coverage, build, package, and smoke checks. |
+| Release trust | Contract-tested, not fully promoted | Manifest, dry-run, publish gates, and artifact classes are covered. Trusted Publishing and public registry publishing are not promoted until proven by release runs. |
+| npm and NuGet runtime protection | Experimental | Scanning is supported; runtime blocking remains outside stable claims. |
 
 ## Experimental Areas
 

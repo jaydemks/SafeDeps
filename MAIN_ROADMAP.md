@@ -2,7 +2,7 @@
 
 Priority rule: do not add new features until CI, tests, threat model, docs and release gates are solid.
 
-_Revisione preparata il 2026-06-17. Obiettivo: aumentare credibilità tecnica, ridurre bug potenziali, rendere il progetto leggibile, verificabile e competitivo contro tool come DataDog Supply-Chain Firewall e progetti maturi come Datasette._
+_Revisione preparata il 2026-06-17. Obiettivo: aumentare credibilità tecnica, ridurre bug potenziali, rendere il progetto leggibile, verificabile e competitivo contro benchmark esterni e progetti maturi._
 
 ## Stato avanzamento
 
@@ -35,7 +35,7 @@ Fonti osservate:
 - SafeDeps ha solo `pytest` tra le dipendenze dev principali nel `pyproject.toml`.
 - La CI attuale gira test su Python 3.10/3.11/3.12 in Ubuntu, ma non mostra ancora una matrice OS/shell/package-manager profonda.
 - Il pre-commit attuale esegue essenzialmente lo scan SafeDeps stesso.
-- Il benchmark SCFW ha una struttura più modulare con package manager e verifiers separati, e una CI molto più aggressiva su versioni pip, npm e poetry.
+- Un benchmark esterno ha una struttura più modulare con package manager e verifiers separati, e una CI molto più aggressiva su versioni pip, npm e poetry.
 - Datasette dimostra come appare un progetto maturo: molti test separati per area, tooling dev ricco, docs e workflow multipli.
 
 ## 1. Obiettivo di punteggio
@@ -684,7 +684,7 @@ Criterio “done”:
 
 ## 10. P2 — NuGet/.NET: restringere il claim e testare bene
 
-NuGet è un vantaggio competitivo rispetto a SCFW, ma solo se è vero. Altrimenti abbassa la fiducia.
+NuGet è un vantaggio competitivo solo se è vero. Altrimenti abbassa la fiducia.
 
 ### 10.1 Casi NuGet minimi
 
@@ -714,9 +714,9 @@ Criterio “done”:
 
 - nessun claim generico “NuGet supported” senza tabella precisa per comandi/file/versioni.
 
-## 11. P2 — Verifier: qui SafeDeps può superare SCFW
+## 11. P2 — Verifier: qui SafeDeps può distinguersi
 
-Per battere SCFW non devi copiare tutto: devi avere verifier più chiari, componibili e documentati.
+Per distinguersi non devi copiare tutto: devi avere verifier più chiari, componibili e documentati.
 
 ### 11.1 Verifier minimi
 
@@ -959,7 +959,7 @@ Tabella consigliata:
 
 | Tool | Focus | SafeDeps differenza |
 |---|---|---|
-| DataDog SCFW | Bloccare installazioni npm/PyPI malevole | SafeDeps punta anche a policy locale, UI, NuGet, CI, AI-agent workflows. |
+| Tool runtime firewall | Bloccare installazioni npm/PyPI malevole | SafeDeps punta anche a policy locale, UI, NuGet, CI, AI-agent workflows. |
 | pip-audit | Audit vulnerabilità Python | SafeDeps è preventivo e policy-based; può integrare audit, non sostituirlo. |
 | osv-scanner | Vulnerability scanning multi-ecosystem | SafeDeps aggiunge guard runtime e policy approval. |
 | GitHub Dependency Review | PR dependency diff | SafeDeps lavora anche localmente prima della PR. |
@@ -1087,7 +1087,7 @@ Deve includere:
 
 ### v0.7 — Verifiers release
 
-Obiettivo: superare SCFW sul piano “policy + signals”.
+Obiettivo: rafforzare SafeDeps sul piano “policy + signals”.
 
 Deve includere:
 
@@ -1196,7 +1196,7 @@ La strada giusta è:
 5. modularizzare adapter/verifier/reporter;
 6. solo dopo spingere marketing, UI e nuove feature.
 
-Se fai questo, SafeDeps può diventare più credibile di SCFW in una cosa precisa: non solo bloccare pacchetti malevoli noti, ma diventare un **policy firewall locale e CI-first per dependency changes generati anche da AI agent**.
+Se fai questo, SafeDeps può diventare molto credibile in una cosa precisa: non solo bloccare pacchetti malevoli noti, ma diventare un **policy firewall locale e CI-first per dependency changes generati anche da AI agent**.
 
 Quella è la posizione forte. Tutto il resto deve servire a dimostrarla.
 
@@ -1208,12 +1208,6 @@ Quella è la posizione forte. Tutto il resto deve servire a dimostrarla.
 - SafeDeps CI: https://raw.githubusercontent.com/jaydemks/SafeDeps/main/.github/workflows/ci.yml
 - SafeDeps pre-commit: https://raw.githubusercontent.com/jaydemks/SafeDeps/main/.pre-commit-config.yaml
 - SafeDeps tests tree: https://github.com/jaydemks/SafeDeps/tree/main/tests
-- DataDog Supply-Chain Firewall repository: https://github.com/DataDog/supply-chain-firewall
-- DataDog SCFW README: https://raw.githubusercontent.com/DataDog/supply-chain-firewall/main/README.md
-- DataDog SCFW pyproject: https://raw.githubusercontent.com/DataDog/supply-chain-firewall/main/pyproject.toml
-- DataDog SCFW CI: https://raw.githubusercontent.com/DataDog/supply-chain-firewall/main/.github/workflows/test.yaml
-- DataDog SCFW Makefile: https://raw.githubusercontent.com/DataDog/supply-chain-firewall/main/Makefile
-- DataDog SCFW tests tree: https://github.com/DataDog/supply-chain-firewall/tree/main/tests
 - Datasette repository: https://github.com/simonw/datasette
 - Datasette pyproject: https://raw.githubusercontent.com/simonw/datasette/main/pyproject.toml
 - Datasette tests tree: https://github.com/simonw/datasette/tree/main/tests

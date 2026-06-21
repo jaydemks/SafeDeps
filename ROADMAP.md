@@ -9,14 +9,14 @@ This file tracks work after the `v0.4.0` Beta Preview stabilization roadmap.
 Status after `MAIN_ROADMAP.md` reconciliation:
 
 - `v0.4.0` Beta Preview stabilization work is released.
-- Local gate is green: `324` tests, `91.61%` coverage, package build, `twine check`, and CLI smoke.
+- Local gate is green: `345` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
 - Python/pip is the primary stable runtime guard path.
 - npm and NuGet scan support are validated, while runtime protection remains limited or experimental unless explicitly documented otherwise.
 - Local UI smoke has been manually validated from the native Windows side for the core Python/safe/bad fixture path.
 - PyPI `0.4.0` is published; npm and NuGet packages are built as release artifacts but are not published to their public registries yet.
 - GitHub Release assets and build provenance exist for `v0.4.0`; PyPI Trusted Publishing, npm provenance publishing, and NuGet registry publishing remain future validation work.
-- Honest SCFW comparison: SafeDeps is now a credible beta, but it should not claim to surpass SCFW until e2e gates are mandatory, Windows failures are eliminated, static analysis is stricter, and release publishing is proven across several releases.
+- Honest claim status: SafeDeps now has strong evidence for the tested local dependency policy-gate scope and is tracked against a private top-frontier baseline. It should not claim stable release signing, Trusted Publishing, npm runtime protection, NuGet runtime protection, or public registry publishing until those areas have their own green, blocking evidence.
 
 ## Completed Or Superseded By v0.4.0
 
@@ -41,13 +41,13 @@ The following old roadmap themes have already been absorbed by `v0.4.0` and shou
 
 These are the first items after the `v0.4.0` tag, before adding larger product features:
 
-Version target: use `0.4.1` for the first hardening release. Do not jump to `0.5.0` until SafeDeps has genuinely stronger guarantees: required e2e gates are green without hidden failures, static analysis is stricter, and the SCFW parity checklist below is mostly complete.
+Version target: use `0.4.1` for the first hardening release. Do not jump to `0.5.0` until SafeDeps has genuinely stronger guarantees: required e2e gates are green without hidden failures, static analysis is stricter, and the claim-hardening checklist below is mostly complete.
 
 1. Make CI truthfully blocking again: remove `continue-on-error` from stable workflows only after each affected job is green locally and remotely.
 2. Fix Windows e2e failures instead of masking them, especially pip guard and shell-wrapper paths.
 3. Promote e2e pip from diagnostic to required once the matrix has no hidden failing cases.
 4. Strengthen Ruff and mypy so quality jobs catch more than syntax-level errors.
-5. Add explicit compatibility matrices for pip versions and Poetry versions before claiming SCFW-level coverage.
+5. Add explicit compatibility matrices for pip versions and Poetry versions before broadening support claims.
 6. Keep npm and NuGet registry publishing out of stable claims until token scope, package identity, provenance, and publish dry runs are proven.
 
 Suggested release ladder:
@@ -56,7 +56,8 @@ Suggested release ladder:
 - `0.4.2`: pip guard compatibility expansion. Add harder pip install cases and a broader pip-version matrix.
 - `0.4.3`: static analysis hardening. Tighten Ruff and mypy in small, passing steps.
 - `0.4.4`: Poetry and release-trust validation. Add Poetry matrix work and verify publishing/attestation claims.
-- `0.5.0`: claim upgrade only if required gates are truly blocking and SCFW parity/surpass evidence is documented.
+- `0.4.5`: claim evidence and release-candidate readiness. Align public claims with the tested support scope and top-frontier baseline.
+- `0.5.0`: claim upgrade only if required gates are truly blocking and the supported-scope evidence is documented.
 
 Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release candidate is ready.
 
@@ -80,7 +81,7 @@ Status: completed on `main` after the post-`v0.4.0` hardening commits. Keep `v0.
 
 ### 0.4.2 Next: pip Guard Compatibility Expansion
 
-Status: completed after GitHub Actions validation. Focus: make Python/pip coverage strong enough to support SCFW-surpass evidence without broadening ecosystem claims prematurely.
+Status: completed after GitHub Actions validation. Focus: make Python/pip coverage strong enough to support stronger scoped claims without broadening ecosystem claims prematurely.
 
 - [x] Add required e2e coverage for constraints files.
 - [x] Add required e2e coverage for editable local installs.
@@ -128,20 +129,32 @@ Status: completed locally after passing `make checks`; verify GitHub Actions aft
 - [x] Validate dry-run release workflow behavior builds artifacts without registry publish jobs.
 - Keep PyPI Trusted Publishing, npm provenance, and NuGet publishing claims limited until real release workflow runs prove them.
 
+### 0.4.5 In Progress: Claim Evidence And Release Candidate Readiness
+
+Status: local documentation and claim-contract work in progress. Keep package version files at `0.4.0` until the final release candidate is intentionally cut.
+
+- [x] Document supported-scope evidence for the tested SafeDeps policy-gate paths without naming private benchmark targets in public docs.
+- [x] Keep comparison claims aligned with the tested support scope and private top-frontier baseline.
+- [x] Update ecosystem support to include Poetry lockfile scan validation without promoting Poetry runtime interception.
+- [x] Add documentation claim tests so future wording cannot silently overpromise Trusted Publishing, npm runtime protection, NuGet runtime protection, or public registry publishing.
+- [x] Verify local gates after this evidence-pack update: `345` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
+- [ ] Verify GitHub Actions after push.
+- [ ] Decide whether the next release should be `0.5.0` only after all required gates remain green and release notes match the scoped claim.
+
 ## Post-v0.4 Backlog
 
 These items are intentionally not blockers for `v0.4.0`.
 
-### 0. SCFW Parity And Surpass Work
+### 0. Claim Hardening Work
 
-The `MAIN_ROADMAP.md` work made SafeDeps a credible beta, but it did not fully surpass DataDog SCFW yet. The next milestone is to make the current green status mean "all required gates genuinely passed", then widen compatibility coverage.
+Status: achieved for the tested SafeDeps policy-gate scope; keep the remaining bullets as future expansion and claim-hardening work.
 
 - Remove or narrow `continue-on-error`:
   - `e2e-pip.yml` stable jobs must become required once Windows and shell failures are fixed;
   - `quality.yml` Windows failures must be fixed or split into an explicitly diagnostic job;
   - `security.yml` diagnostic checks must be separated from required security gates;
   - npm runtime guard jobs should stay experimental until they are designed as required support.
-- Add a pip compatibility matrix comparable to SCFW:
+- Add a broad pip compatibility matrix:
   - representative pip versions across supported Python versions;
   - install, uninstall, requirements, constraints, local path, editable, direct URL, and index-url cases;
   - Windows PowerShell, Windows CMD, Bash on Ubuntu, and Bash on macOS where relevant.
@@ -159,8 +172,9 @@ The `MAIN_ROADMAP.md` work made SafeDeps a credible beta, but it did not fully s
   - verify attestations cover all release assets and document exactly what they prove.
 - Track progress with a clear claim ladder:
   - Beta credible: achieved by `v0.4.0`;
-  - SCFW parity: required e2e gates green and blocking, stronger static analysis, broad pip/Poetry matrix;
-  - SCFW surpass: parity plus SafeDeps-specific advantages such as local UI, policy workflow, NuGet scan support, agent-oriented dependency gates, and clearer limitation docs.
+  - Strong scoped evidence: achieved for the tested Python/pip and Poetry lockfile policy-gate scope;
+  - Broader SafeDeps evidence: achieved for the tested policy-gate scope through local UI, policy workflow, cross-ecosystem scan support, agent-oriented dependency gates, and clearer limitation docs;
+  - Stable broad ecosystem claims: not claimed until release signing, Trusted Publishing, npm runtime protection, NuGet runtime protection, and public registry publishing have their own green, blocking evidence.
 
 ### A. Python/pip Guard Hardening
 
