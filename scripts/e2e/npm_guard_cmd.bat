@@ -17,6 +17,39 @@ if %ERRORLEVEL% EQU 0 (
 call npm install lodash@4.17.21 --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
+set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-lockfile"
+mkdir "%PROJECT%"
+cd /d "%PROJECT%"
+call npm init -y
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+python -m safedeps.cli setup . --install-scope system --protection-scope project
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+call .safedeps\activate.bat
+call npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+if not exist package-lock.json (
+  echo Expected package-lock.json to be created.
+  exit /b 1
+)
+python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-update"
+mkdir "%PROJECT%"
+cd /d "%PROJECT%"
+call npm init -y
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+python -m safedeps.cli setup . --install-scope system --protection-scope project
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+call .safedeps\activate.bat
+call npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+call npm update lodash
+if %ERRORLEVEL% EQU 0 (
+  echo Expected unpinned npm update to be blocked.
+  exit /b 1
+)
+
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-lifecycle"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"

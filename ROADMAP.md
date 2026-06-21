@@ -76,17 +76,18 @@ Status: completed after local gates and GitHub Actions validation. Additional co
 
 ### 0.5.3 In Progress: npm Runtime Truth Work
 
-Status: dedicated npm runtime guard e2e scripts added and validated by GitHub Actions. Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
+Status: dedicated npm runtime guard e2e scripts and source-policy scans added. Current local block promotes npm runtime e2e from diagnostic to blocking for Bash, PowerShell, and CMD; local `make checks` passed with `386` tests and `93.55%` coverage. Verify GitHub Actions after push before changing public claims.
 
-- [ ] Decide exact supported npm versions and OS/shell combinations.
+- [x] Decide exact supported npm versions and OS/shell combinations for the first blocking slice: Node/npm from Actions `setup-node` 22 on Ubuntu Bash and Windows PowerShell/CMD.
 - [x] Extract npm runtime guard e2e coverage into dedicated Bash, PowerShell, and CMD scripts.
 - [x] Add runtime script coverage for unpinned install block, pinned install allow, lifecycle-script block, and uninstall block.
 - [x] Extend generated npm guard wrappers to block guarded `npm uninstall` operations.
 - [x] Add workflow contract tests so npm runtime e2e logic stays script-based and explicit.
-- [ ] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
+- [x] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
 - [x] Add scan coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
 - [x] Add registry/source policy tests for default registry, custom registry, untrusted registry, and direct source dependency behavior.
-- [ ] Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
+- [x] Keep npm runtime claims limited while the new blocking matrix awaits GitHub Actions validation.
+- [ ] Verify GitHub Actions after push with the new blocking npm runtime matrix.
 
 ### 0.5.4 Planned: NuGet Runtime Truth Work
 

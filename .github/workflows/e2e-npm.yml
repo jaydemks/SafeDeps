@@ -213,12 +213,10 @@ jobs:
           }
           exit 0
 
-  runtime-guard-experimental:
-    name: npm runtime guard experimental - ${{ matrix.shell }} on ${{ matrix.os }}
-    if: github.event_name == 'workflow_dispatch'
+  runtime-guard:
+    name: npm runtime guard - ${{ matrix.shell }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
-    timeout-minutes: 3
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:

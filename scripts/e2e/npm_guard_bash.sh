@@ -31,6 +31,21 @@ test_unpinned_install_policy() {
   npm install lodash@4.17.21 --ignore-scripts
 }
 
+test_package_lock_policy() {
+  local project="$runner_temp/safedeps-npm-runtime-lockfile"
+  activate_guard "$project"
+  npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+  test -f package-lock.json
+  "$python_bin" -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+}
+
+test_update_policy() {
+  local project="$runner_temp/safedeps-npm-runtime-update"
+  activate_guard "$project"
+  npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+  assert_blocked "Expected unpinned npm update to be blocked." npm update lodash
+}
+
 test_lifecycle_script_policy() {
   local project="$runner_temp/safedeps-npm-runtime-lifecycle"
   activate_guard "$project"
@@ -55,5 +70,7 @@ test_uninstall_policy() {
 }
 
 test_unpinned_install_policy
+test_package_lock_policy
+test_update_policy
 test_lifecycle_script_policy
 test_uninstall_policy

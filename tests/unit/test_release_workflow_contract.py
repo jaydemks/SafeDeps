@@ -114,10 +114,10 @@ def test_required_workflow_actions_are_pinned_to_full_shas():
 
 def test_npm_runtime_guard_workflow_uses_dedicated_e2e_scripts():
     text = _npm_e2e_workflow_text()
-    runtime_block = _job_block(text, "runtime-guard-experimental")
+    runtime_block = _job_block(text, "runtime-guard")
 
-    assert "if: github.event_name == 'workflow_dispatch'" in runtime_block
-    assert "continue-on-error: true" in runtime_block
+    assert "if: github.event_name == 'workflow_dispatch'" not in runtime_block
+    assert "continue-on-error: true" not in runtime_block
     assert "bash scripts/e2e/npm_guard_bash.sh" in runtime_block
     assert "./scripts/e2e/npm_guard_pwsh.ps1" in runtime_block
     assert "call scripts\\e2e\\npm_guard_cmd.bat" in runtime_block
@@ -126,6 +126,8 @@ def test_npm_runtime_guard_workflow_uses_dedicated_e2e_scripts():
         script_text = (ROOT / "scripts" / "e2e" / script_name).read_text(encoding="utf-8")
         assert "npm install lodash" in script_text
         assert "npm install lodash@4.17.21 --ignore-scripts" in script_text
+        assert "npm install lodash@4.17.21 --package-lock-only --ignore-scripts" in script_text
+        assert "npm update lodash" in script_text
         assert "npm uninstall lodash" in script_text
         assert "postinstall" in script_text
 

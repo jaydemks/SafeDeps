@@ -31,6 +31,21 @@ Invoke-ExpectBlocked "Expected unpinned npm install to be blocked." { npm instal
 npm install lodash@4.17.21 --ignore-scripts
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+New-GuardedNpmProject "safedeps-npm-runtime-lockfile" | Out-Null
+npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not (Test-Path package-lock.json)) {
+    Write-Error "Expected package-lock.json to be created."
+    exit 1
+}
+python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+New-GuardedNpmProject "safedeps-npm-runtime-update" | Out-Null
+npm install lodash@4.17.21 --package-lock-only --ignore-scripts
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Invoke-ExpectBlocked "Expected unpinned npm update to be blocked." { npm update lodash }
+
 New-GuardedNpmProject "safedeps-npm-runtime-lifecycle" | Out-Null
 @'
 {

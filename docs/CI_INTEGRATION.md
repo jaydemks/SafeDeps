@@ -62,7 +62,7 @@ SafeDeps now has these release/stabilization gates:
 | --- | --- | --- |
 | OS matrix | Ubuntu, Windows, macOS | Covered by `quality.yml`; pip e2e covers Ubuntu/macOS Bash and Windows PowerShell/CMD. |
 | Python matrix | Python 3.10, 3.11, 3.12, 3.13 | Covered by `quality.yml` and `e2e-pip.yml`. |
-| Shell matrix | Bash, PowerShell, CMD | Covered for pip guard e2e; npm runtime jobs are diagnostic/experimental. |
+| Shell matrix | Bash, PowerShell, CMD | Covered for pip guard e2e; npm runtime jobs cover the first blocking slice and remain claim-limited. |
 | pip versions | Latest plus representative older pip | Covered in `e2e-pip.yml` with latest and 23.3.2. |
 | npm versions | Node 20 and 22 scan validation | Covered for scan validation in `e2e-npm.yml`; runtime guard remains experimental. |
 | NuGet/.NET SDK | .NET 8 SDK scan validation | Covered for scan validation in `e2e-nuget.yml`; runtime guard remains experimental. |
@@ -97,7 +97,7 @@ The NuGet validation workflow currently checks:
 
 npm runtime support should not be promoted until CI includes:
 
-- npm runtime guard jobs are mandatory instead of diagnostic/continue-on-error;
+- npm runtime guard jobs stay mandatory for their claimed slice instead of diagnostic/continue-on-error;
 - npm lockfile v2/v3 coverage is explicit;
 - workspace coverage is included.
 
