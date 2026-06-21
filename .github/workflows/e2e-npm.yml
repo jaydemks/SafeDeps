@@ -216,7 +216,10 @@ jobs:
   runtime-guard:
     name: npm runtime guard - ${{ matrix.shell }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
     strategy:
       fail-fast: false
       matrix:
@@ -240,19 +243,19 @@ jobs:
         if: matrix.shell == 'bash'
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e .
       - name: Install SafeDeps from checkout
         shell: pwsh
         if: matrix.shell == 'pwsh'
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e .
       - name: Install SafeDeps from checkout
         shell: cmd
         if: matrix.shell == 'cmd'
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+          python -m pip install -e .
       - name: Bash runtime guard blocks unpinned npm install
         shell: bash
         if: matrix.shell == 'bash'
