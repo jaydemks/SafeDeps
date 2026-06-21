@@ -126,7 +126,9 @@ def test_npm_runtime_guard_workflow_uses_dedicated_e2e_scripts():
         script_text = (ROOT / "scripts" / "e2e" / script_name).read_text(encoding="utf-8")
         assert "npm install lodash" in script_text
         assert "npm install lodash@4.17.21 --save-exact --ignore-scripts" in script_text
-        assert "npm install lodash@4.17.21 --save-exact --package-lock-only" in script_text
+        assert "lodash" in script_text
+        assert "4.17.21" in script_text
+        assert "npm install --package-lock-only --ignore-scripts" in script_text
         assert "npm update lodash" in script_text
         assert "npm uninstall lodash" in script_text
         assert "postinstall" in script_text

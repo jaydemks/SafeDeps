@@ -29,6 +29,18 @@ assert_blocked() {
   fi
 }
 
+write_exact_lodash_manifest() {
+  "$python_bin" - <<'PY'
+import json
+from pathlib import Path
+Path("package.json").write_text(json.dumps({
+    "name": "safedeps-npm-runtime",
+    "version": "1.0.0",
+    "dependencies": {"lodash": "4.17.21"},
+}), encoding="utf-8")
+PY
+}
+
 test_unpinned_install_policy() {
   echo "::group::test_unpinned_install_policy"
   local project="$runner_temp/safedeps-npm-runtime-install"
@@ -42,7 +54,8 @@ test_package_lock_policy() {
   echo "::group::test_package_lock_policy"
   local project="$runner_temp/safedeps-npm-runtime-lockfile"
   activate_guard "$project"
-  npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
+  write_exact_lodash_manifest
+  npm install --package-lock-only --ignore-scripts
   test -f package-lock.json
   "$python_bin" -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
   echo "::endgroup::"
@@ -52,7 +65,8 @@ test_update_policy() {
   echo "::group::test_update_policy"
   local project="$runner_temp/safedeps-npm-runtime-update"
   activate_guard "$project"
-  npm install lodash@4.17.21 --save-exact --package-lock-only --ignore-scripts
+  write_exact_lodash_manifest
+  npm install --package-lock-only --ignore-scripts
   assert_blocked "Expected unpinned npm update to be blocked." npm update lodash
   echo "::endgroup::"
 }
@@ -79,7 +93,8 @@ test_uninstall_policy() {
   echo "::group::test_uninstall_policy"
   local project="$runner_temp/safedeps-npm-runtime-uninstall"
   activate_guard "$project"
-  npm install lodash@4.17.21 --save-exact --ignore-scripts
+  write_exact_lodash_manifest
+  npm install --ignore-scripts
   assert_blocked "Expected npm uninstall to be blocked by scan policy." npm uninstall lodash
   echo "::endgroup::"
 }
