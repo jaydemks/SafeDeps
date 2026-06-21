@@ -3,10 +3,12 @@ set -euo pipefail
 
 runner_temp="${RUNNER_TEMP:-/tmp}"
 python_bin="${PYTHON_BIN:-python}"
+base_path="$PATH"
 
 activate_guard() {
   local project="$1"
   echo "::group::activate ${project##*/}"
+  export PATH="$base_path"
   mkdir -p "$project"
   cd "$project"
   npm init -y

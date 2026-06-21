@@ -1,9 +1,11 @@
 $ErrorActionPreference = "Continue"
 $PSNativeCommandUseErrorActionPreference = $false
+$BasePath = $env:PATH
 
 function New-GuardedNpmProject {
     param([Parameter(Mandatory=$true)][string]$Name)
     Write-Host "::group::activate $Name"
+    $env:PATH = $BasePath
     $project = Join-Path $env:RUNNER_TEMP $Name
     New-Item -ItemType Directory -Force -Path $project | Out-Null
     Set-Location $project

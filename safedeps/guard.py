@@ -479,8 +479,9 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ] || [ "${{1:-}}" = "un
     echo "Open UI: safedeps ui . --open-browser"
     exit 2
   fi
+  exec "${{REAL_NPM}}" "$sub" "$@"
 fi
-exec "${{REAL_NPM}}" "$sub" "$@"
+exec "${{REAL_NPM}}" "$@"
     """
     npm_ps1 = f"""$NpmArgs = $args
 $ErrorActionPreference = "Stop"

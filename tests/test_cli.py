@@ -1936,6 +1936,7 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert 'REAL_PY="' in npm_wrapper
     assert 'REAL_NPM="' in npm_wrapper
     assert 'exec "${REAL_NPM}" "$sub" "$@"' in npm_wrapper
+    assert 'exec "${REAL_NPM}" "$@"' in npm_wrapper
     assert "& $RealNpm @NpmArgs" in npm_ps1
     assert 'set "_real_npm=' in npm_cmd
     assert 'call "!_real_npm!" %*' in npm_cmd

@@ -1,7 +1,9 @@
 @echo off
 setlocal EnableExtensions
+set "BASE_PATH=%PATH%"
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-install"
+set "PATH=%BASE_PATH%"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"
 call npm init -y
@@ -18,6 +20,7 @@ call npm install lodash@4.17.21 --ignore-scripts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-lockfile"
+set "PATH=%BASE_PATH%"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"
 call npm init -y
@@ -35,6 +38,7 @@ python -m safedeps.cli scan . --fail-on HIGH --out security-artifacts
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-update"
+set "PATH=%BASE_PATH%"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"
 call npm init -y
@@ -51,6 +55,7 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-lifecycle"
+set "PATH=%BASE_PATH%"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"
 call npm init -y
@@ -77,6 +82,7 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime-uninstall"
+set "PATH=%BASE_PATH%"
 mkdir "%PROJECT%"
 cd /d "%PROJECT%"
 call npm init -y
