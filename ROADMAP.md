@@ -151,8 +151,8 @@ Status: local release-candidate preparation in progress. Package version files n
 - [x] Move the published `0.4.0` release note into `release-notes/old/`.
 - [x] Run local version/preflight checks for `0.5.0`.
 - [x] Run final local quality gate for `0.5.0`: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
-- [ ] Verify GitHub Actions after the release-candidate push.
-- [ ] Run release workflow dry-run with `publish=false`.
+- [x] Verify GitHub Actions after the release-candidate push.
+- [x] Run release workflow dry-run with `publish=false`.
 - [ ] Create tag and release only after the dry-run is green.
 
 ## Post-v0.4 Backlog
