@@ -83,7 +83,7 @@ def test_release_dry_run_dispatch_uses_current_ref_until_publish_or_tag():
     text = _release_workflow_text()
 
     assert "inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref" in text
-    assert "body_path: RELEASE_NOTES_2026-06-21-0.5.1.md" in text
+    assert "body_path: RELEASE_NOTES_2026-06-21-0.6.0.md" in text
 
 
 def test_release_attestation_and_github_release_include_all_artifact_classes():

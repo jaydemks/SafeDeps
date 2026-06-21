@@ -6,9 +6,9 @@ This file tracks work after the `v0.5.0` Beta Preview release.
 
 ## Current Baseline
 
-Status after the `v0.5.1` Beta Preview:
+Status after the `v0.6.0` Beta Preview preparation:
 
-- `v0.5.1` Beta Preview is published to PyPI and GitHub Releases.
+- `v0.5.1` Beta Preview is published to PyPI and GitHub Releases; `v0.6.0` is prepared locally pending final release verification.
 - Local gate is green: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
 - Python/pip is the primary stable runtime guard path and is covered by blocking Linux, macOS, Windows PowerShell, and Windows CMD e2e jobs.
@@ -16,7 +16,7 @@ Status after the `v0.5.1` Beta Preview:
 - npm and NuGet scan support are validated, while runtime protection remains limited or experimental unless explicitly documented otherwise.
 - Local UI smoke has been manually validated from the native Windows side for the core Python/safe/bad fixture path.
 - PyPI `0.5.1` is published through Trusted Publishing/OIDC; npm and NuGet packages are built as release assets but are not promoted as public-registry install channels yet.
-- GitHub Release assets and build provenance exist for `v0.5.1`; npm provenance publishing, NuGet registry publishing, npm runtime protection, and NuGet runtime protection remain future validation work.
+- GitHub Release assets and build provenance exist for `v0.5.1`; npm provenance publishing, NuGet registry publishing, broad npm runtime protection, and NuGet runtime protection remain future validation work.
 - Honest claim status: SafeDeps has strong repository, CI, documentation, and tested Python/pip evidence. It is still a Beta Preview until release trust, package-intelligence depth, npm/NuGet runtime matrices, and multi-release maturity are stronger.
 
 ## Next Strategic Target
@@ -100,17 +100,20 @@ Status: completed locally after NuGet scan/CI e2e expansion and claim review. Nu
 - [x] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.
 - [ ] Verify GitHub Actions after push.
 
-### 0.6.0 Target: Production-Grade Evidence
+### 0.6.0 In Progress: Production-Grade Evidence
 
-Status: aspirational target, not guaranteed. Cut `0.6.0` only when SafeDeps has enough evidence to claim a meaningfully stronger production posture.
+Status: release preparation in progress. Cut `0.6.0` only after local gates, release preflight, release dry-run, and tag workflow validation are green.
 
-- [ ] At least one release-trust path is proven without API-token-only PyPI publishing.
-- [ ] Required workflows use pinned action SHAs or an explicitly documented exception process.
-- [ ] Package intelligence covers local advisories, OSV-style advisories, and metadata-risk signals with deterministic tests.
-- [ ] npm and NuGet support claims are either proven by blocking runtime matrices or explicitly kept scan-only/experimental.
-- [ ] Release notes, README, ecosystem support docs, and comparison docs all describe the same tested scope.
+- [x] At least one release-trust path is proven without API-token-only PyPI publishing.
+- [x] Required workflows use pinned action SHAs or an explicitly documented exception process.
+- [x] Package intelligence covers local advisories, OSV-style advisories, and metadata-risk signals with deterministic tests.
+- [x] npm and NuGet support claims are either proven by blocking runtime matrices or explicitly kept scan-only/experimental.
+- [x] Release notes, README, ecosystem support docs, and comparison docs all describe the same tested scope.
 - [ ] At least two consecutive patch releases complete without hidden failing jobs or claim corrections after publication.
-- [ ] Reach deliberate `100%` project coverage, or document any excluded line as intentionally untestable with a specific reason.
+- [ ] Reach deliberate `100%` project coverage, or document remaining non-100% modules as future hardening work with specific reasons.
+- [x] Verify local release gates for `0.6.0`: version checks, release preflight, `390` tests, `93.43%` coverage, package build, `twine check`, and CLI smoke.
+- [ ] Verify release dry-run for `0.6.0`.
+- [ ] Verify tag workflow and registry visibility for `0.6.0`.
 
 ## Completed Or Superseded By v0.4.0
 
