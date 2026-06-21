@@ -1,9 +1,12 @@
 # SafeDeps
 
 [![CI](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/ci.yml)
+[![Quality](https://github.com/jaydemks/SafeDeps/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/quality.yml)
 [![SafeDeps Policy](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml/badge.svg?branch=main)](https://github.com/jaydemks/SafeDeps/actions/workflows/safedeps.yml)
+[![PyPI](https://img.shields.io/pypi/v/safedeps)](https://pypi.org/project/safedeps/)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
-![Release](https://img.shields.io/github/v/release/jaydemks/SafeDeps?display_name=tag)
+![License](https://img.shields.io/github/license/jaydemks/SafeDeps)
+![Release](https://img.shields.io/github/v/release/jaydemks/SafeDeps?display_name=tag&include_prereleases)
 
 ![SafeDeps Banner](docs/images/safedeps_banner_2026.png)
 
@@ -15,7 +18,7 @@ This is useful when developers, scripts, or AI coding agents can add packages to
 
 SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
 
-SafeDeps `0.5.1` is a **Beta Preview**: Python/pip and Poetry lockfile scanning are the strongest tested paths, npm and NuGet scanning are available, and npm runtime protection has a limited first blocking slice. Broader npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
+SafeDeps `0.6.0` is a **Beta Preview** with production-grade evidence for its tested scope: Python/pip runtime guards are the strongest path, Poetry lockfile scanning is validated across a version matrix, npm has a limited first blocking runtime slice, and NuGet has strong scan/CI validation. Broader npm runtime protection and NuGet runtime interception are not claimed until their own dedicated evidence exists.
 
 ## 90-second quickstart
 
@@ -89,7 +92,7 @@ SafeDeps is strongest today for Python and pip workflows. The current release li
 | npm scanning | Supported |
 | npm runtime guard | Limited first blocking slice; broader claim still experimental |
 | NuGet/.NET scanning | Supported |
-| NuGet/.NET runtime flows | Experimental until OS/SDK e2e matrix is green |
+| NuGet/.NET runtime flows | Not claimed; scan/CI validation is supported |
 | Git submodule checks | Supported |
 
 The detailed support matrix and current non-guarantees are tracked in
@@ -104,7 +107,7 @@ PyPI publishing is available:
 pip install safedeps
 ```
 
-The npm wrapper and .NET tool wrapper exist in this repository, but they are not published to the public npm or NuGet registries in this release. npm runtime protection is validated only for a limited first slice; npm and NuGet runtime protection are not production-grade claims yet.
+The npm wrapper and .NET tool wrapper exist in this repository, but they are not published to the public npm or NuGet registries in this release. npm runtime protection is validated only for a limited first slice. NuGet runtime interception is not claimed because SafeDeps does not yet install a dedicated `dotnet` command interceptor.
 
 ## Install
 
