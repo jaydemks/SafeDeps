@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 from contextlib import suppress
@@ -55,6 +56,24 @@ from .guard_state import (
 )
 
 
+def _resolve_real_npm() -> str:
+    names = ["npm.cmd", "npm.exe", "npm.bat", "npm"] if _is_windows() else ["npm"]
+    path_entries = os.environ.get("PATH", "").split(os.pathsep)
+
+    for entry in path_entries:
+        if not entry:
+            continue
+        directory = Path(entry)
+        if any(part.lower() == ".safedeps" for part in directory.parts):
+            continue
+        for name in names:
+            candidate = directory / name
+            if candidate.is_file():
+                return str(candidate)
+
+    return shutil.which("npm") or "npm"
+
+
 def cmd_setup(args):
     root = Path(args.path).resolve()
     fail_on = str(getattr(args, "fail_on", "HIGH") or "HIGH").upper()
@@ -85,7 +104,7 @@ def cmd_setup(args):
                     stale.unlink()
             except Exception:
                 pass
-    real_npm = shutil.which("npm") or "npm"
+    real_npm = _resolve_real_npm()
     real_npm_posix = real_npm.replace("\\", "/")
 
     wrapper = f"""#!/usr/bin/env bash

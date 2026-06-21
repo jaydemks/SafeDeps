@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 import sys
@@ -26,6 +27,7 @@ from safedeps.cli import (
 )
 from safedeps.guard import (
     _filter_guard_path_entries,
+    _resolve_real_npm,
     _strip_autoguard_blocks,
     _strip_cmd_autorun_blocks,
 )
@@ -1938,6 +1940,19 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert 'set "_real_npm=' in npm_cmd
     assert 'call "!_real_npm!" %*' in npm_cmd
     assert 'scope="global"' in npm_wrapper
+
+
+def test_resolve_real_npm_skips_active_safedeps_wrappers(tmp_path, monkeypatch):
+    guard_bin = tmp_path / ".safedeps" / "bin"
+    real_bin = tmp_path / "node"
+    guard_bin.mkdir(parents=True)
+    real_bin.mkdir()
+    (guard_bin / "npm").write_text("wrapper", encoding="utf-8")
+    (real_bin / "npm").write_text("real", encoding="utf-8")
+    monkeypatch.setattr(guard_mod, "_is_windows", lambda: False)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(guard_bin), str(real_bin)]))
+
+    assert _resolve_real_npm() == str(real_bin / "npm")
 
 
 def test_setup_uses_requested_fail_on_threshold(tmp_path):
