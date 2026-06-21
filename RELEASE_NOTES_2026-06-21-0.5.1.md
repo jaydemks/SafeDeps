@@ -10,6 +10,8 @@ Patch release focused on release-trust hardening. SafeDeps `0.5.1` keeps the sam
 - Add a dedicated `pypi` release environment to the PyPI publish job.
 - Keep PyPI publishing separated from build jobs so only the publish job receives `id-token: write`.
 - Update release workflow contract tests so token-based PyPI publishing cannot silently return.
+- Pin GitHub Actions workflow dependencies to full commit SHAs while keeping version comments for maintainability.
+- Add release workflow contract coverage so mutable workflow action refs cannot silently return.
 - Keep npm and NuGet publish paths unchanged and scoped as experimental/public-registry-limited until their own registry and provenance gates are proven.
 
 ## Verification
@@ -19,8 +21,10 @@ Patch release focused on release-trust hardening. SafeDeps `0.5.1` keeps the sam
 - `GITHUB_REF_NAME=v0.5.1 .venv/bin/python scripts/release/preflight.py --expected-version 0.5.1 --require-tag`
 - `.venv/bin/python -m pytest tests/unit/test_release_workflow_contract.py -q`
 - `make checks PYTHON=.venv/bin/python`
+- PyPI `0.5.1` is published and visible as the latest SafeDeps version.
+- GitHub Release `v0.5.1` is published with Python, npm wrapper, NuGet tool, and release manifest assets.
 
 ## Still Deliberately Limited
 
 - npm public registry publishing, NuGet public registry publishing, npm runtime protection, and NuGet runtime protection remain outside stable claims until their own release/e2e gates prove them.
-- This release proves the PyPI Trusted Publishing path only after the `v0.5.1` tag workflow publishes successfully.
+- Build provenance claims are limited to what the GitHub attestation and release manifest prove for the published artifacts.

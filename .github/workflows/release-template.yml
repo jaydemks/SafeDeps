@@ -18,10 +18,10 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
       - name: Run release preflight checks
@@ -39,10 +39,10 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
       - name: Build python package
@@ -52,7 +52,7 @@ jobs:
           rm -rf dist build ./*.egg-info
           python -m build
       - name: Upload Python dist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: python-dist
           path: dist/
@@ -61,10 +61,10 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '20'
       - name: Pack npm wrapper
@@ -72,7 +72,7 @@ jobs:
           cd packages/npm-wrapper
           npm pack
       - name: Upload npm tarball
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: npm-wrapper-tarball
           path: packages/npm-wrapper/*.tgz
@@ -81,10 +81,10 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5
         with:
           dotnet-version: '8.0.x'
       - name: Restore .NET tool project
@@ -103,7 +103,7 @@ jobs:
             exit 1
           fi
       - name: Upload NuGet package
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dotnet-tool-nupkg
           path: artifacts/dotnet/*.nupkg
@@ -113,24 +113,24 @@ jobs:
     needs: [build-python, build-npm-wrapper, build-dotnet-tool]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
       - name: Download Python dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: npm-wrapper-tarball
           path: packages/npm-wrapper/
       - name: Download NuGet package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dotnet-tool-nupkg
           path: artifacts/dotnet/
@@ -142,7 +142,7 @@ jobs:
           fi
           python scripts/release/create_release_manifest.py --version "$VERSION"
       - name: Upload release manifest
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-manifest
           path: release-artifacts/release-manifest.json
@@ -159,12 +159,12 @@ jobs:
       contents: read
     steps:
       - name: Download Python dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: python-dist
           path: dist/
       - name: Publish to PyPI with Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
           packages-dir: dist/
           print-hash: true
@@ -179,7 +179,7 @@ jobs:
       contents: read
     steps:
       - name: Download npm tarball
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
@@ -193,7 +193,7 @@ jobs:
           else
             echo "has_npm_token=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
@@ -222,11 +222,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download NuGet package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5
         with:
           dotnet-version: '8.0.x'
       - name: Publish to NuGet (conditional)
@@ -249,27 +249,27 @@ jobs:
       contents: read
     steps:
       - name: Download Python dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
       - name: Download NuGet package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
       - name: Download release manifest
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: release-manifest
           path: release-artifacts/
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@b3e506e8c389afc651c5bacf2b8f2a1ea0557215 # v4
         with:
           subject-path: |
             dist/*
@@ -284,31 +284,31 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref }}
       - name: Download Python dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: python-dist
           path: dist/
       - name: Download npm tarball
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: npm-wrapper-tarball
           path: npm-dist/
       - name: Download NuGet package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dotnet-tool-nupkg
           path: dotnet-dist/
       - name: Download release manifest
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: release-manifest
           path: release-artifacts/
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@7c4723f7a335432393329f8f1c564994ce50185d # v3
         with:
           tag_name: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref_name }}
           name: ${{ inputs.release_version && format('SafeDeps {0} Beta Preview - Scoped Policy Gate', inputs.release_version) || format('{0} Beta Preview - Scoped Policy Gate', github.ref_name) }}

@@ -9,10 +9,18 @@ from scripts.release.create_release_manifest import artifact_path, collect_files
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-template.yml"
+WORKFLOWS_DIR = ROOT / ".github" / "workflows"
 
 
 def _release_workflow_text() -> str:
     return RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _workflow_texts() -> dict[str, str]:
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(WORKFLOWS_DIR.glob("*.yml"))
+    }
 
 
 def _job_block(text: str, job: str) -> str:
@@ -32,7 +40,7 @@ def test_release_publish_jobs_are_explicitly_gated_and_skippable():
     assert "id-token: write" in pypi_block
     assert "environment:" in pypi_block
     assert "name: pypi" in pypi_block
-    assert "uses: pypa/gh-action-pypi-publish@release/v1" in pypi_block
+    assert re.search(r"uses: pypa/gh-action-pypi-publish@[0-9a-f]{40} # release/v1", pypi_block)
     assert "packages-dir: dist/" in pypi_block
     assert "PYPI_API_TOKEN" not in pypi_block
     assert "twine upload" not in pypi_block
@@ -79,9 +87,24 @@ def test_release_attestation_and_github_release_include_all_artifact_classes():
     ):
         assert artifact_path in text
 
-    assert "uses: actions/attest-build-provenance@v4" in text
+    assert re.search(r"uses: actions/attest-build-provenance@[0-9a-f]{40} # v4", text)
     assert "attestations: write" in text
-    assert "uses: softprops/action-gh-release@v3" in text
+    assert re.search(r"uses: softprops/action-gh-release@[0-9a-f]{40} # v3", text)
+
+
+def test_required_workflow_actions_are_pinned_to_full_shas():
+    mutable_refs = []
+
+    for workflow_name, text in _workflow_texts().items():
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            match = re.search(r"uses:\s+([^@\s]+)@([^\s#]+)", line)
+            if not match:
+                continue
+            ref = match.group(2)
+            if not re.fullmatch(r"[0-9a-f]{40}", ref):
+                mutable_refs.append(f"{workflow_name}:{line_number}: {line.strip()}")
+
+    assert mutable_refs == []
 
 
 def test_release_manifest_collects_python_npm_and_nuget_artifacts(tmp_path):

@@ -6,17 +6,17 @@ This file tracks work after the `v0.5.0` Beta Preview release.
 
 ## Current Baseline
 
-Status after the `v0.5.0` Beta Preview:
+Status after the `v0.5.1` Beta Preview:
 
-- `v0.5.0` Beta Preview is published to PyPI and GitHub Releases.
+- `v0.5.1` Beta Preview is published to PyPI and GitHub Releases.
 - Local gate is green: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
 - Python/pip is the primary stable runtime guard path and is covered by blocking Linux, macOS, Windows PowerShell, and Windows CMD e2e jobs.
 - Poetry lockfile scanning is validated across a required version matrix.
 - npm and NuGet scan support are validated, while runtime protection remains limited or experimental unless explicitly documented otherwise.
 - Local UI smoke has been manually validated from the native Windows side for the core Python/safe/bad fixture path.
-- PyPI `0.5.0` is published; npm and NuGet packages are built as release assets but are not promoted as public-registry install channels yet.
-- GitHub Release assets and build provenance exist for `v0.5.0`; PyPI Trusted Publishing, npm provenance publishing, NuGet registry publishing, npm runtime protection, and NuGet runtime protection remain future validation work.
+- PyPI `0.5.1` is published through Trusted Publishing/OIDC; npm and NuGet packages are built as release assets but are not promoted as public-registry install channels yet.
+- GitHub Release assets and build provenance exist for `v0.5.1`; npm provenance publishing, NuGet registry publishing, npm runtime protection, and NuGet runtime protection remain future validation work.
 - Honest claim status: SafeDeps has strong repository, CI, documentation, and tested Python/pip evidence. It is still a Beta Preview until release trust, package-intelligence depth, npm/NuGet runtime matrices, and multi-release maturity are stronger.
 
 ## Next Strategic Target
@@ -43,15 +43,16 @@ Do not advance package versions at the start of a local hardening cycle. Change 
 
 ### 0.5.1 In Progress: Release Trust Hardening
 
-Status: local PyPI Trusted Publishing path prepared. Do not claim it is proven until the `v0.5.1` tag workflow publishes successfully through OIDC.
+Status: PyPI Trusted Publishing/OIDC is proven by the `v0.5.1` tag workflow. GitHub Actions SHA pinning is prepared locally and must be verified by GitHub Actions after push.
 
 - [x] Configure PyPI Trusted Publishing/OIDC for the release workflow.
 - [x] Remove the PyPI API-token/Twine fallback from the release workflow.
-- [ ] Pin third-party GitHub Actions to full commit SHAs, while keeping an update process for maintainability.
+- [x] Pin third-party GitHub Actions to full commit SHAs, while keeping version comments for maintainability.
 - [x] Add contract tests so token-based PyPI publishing cannot silently return.
-- [ ] Verify build provenance covers every release asset listed in `release-manifest.json`.
-- [ ] Document exactly what the attestations prove and what they do not prove.
-- [ ] Run a non-publishing release dry-run and one real patch release to prove the release trust path.
+- [x] Add contract tests so required workflows cannot silently return to mutable action refs.
+- [x] Verify build provenance covers every release asset class listed in `release-manifest.json`.
+- [x] Document exactly what the attestations prove and what they do not prove.
+- [x] Run a non-publishing release dry-run and one real patch release to prove the PyPI Trusted Publishing path.
 
 ### 0.5.2 Planned: Package Intelligence Expansion
 

@@ -102,6 +102,15 @@ Do not promote Trusted Publishing or release attestations from "scaffolded" to "
 
 Until then, release notes should say "Trusted Publishing path prepared", not "Trusted Publishing proven".
 
+For the `0.5.1` release line:
+
+- PyPI Trusted Publishing/OIDC is proven only after PyPI lists the tagged version as published.
+- GitHub build provenance proves that the attested files were produced by the GitHub Actions run for the referenced repository, workflow, ref, and commit.
+- The release manifest proves deterministic file names, sizes, and SHA256 digests for the release artifacts it lists.
+- The attestation does not prove that npm or NuGet packages were published to their public registries.
+- The attestation does not prove that every future install path is protected; runtime support claims still come only from e2e matrices and documented support scope.
+- The release workflow must keep the attestation subject paths aligned with `release-manifest.json`: Python `dist/*`, npm tarball, NuGet package, and the release manifest itself.
+
 ## Artifact Integrity Manifest
 
 The release workflow generates:
