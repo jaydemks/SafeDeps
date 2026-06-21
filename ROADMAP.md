@@ -1,22 +1,99 @@
-# SafeDeps Roadmap (Next)
+# SafeDeps Roadmap
 
-This file tracks work after the `v0.4.0` Beta Preview stabilization roadmap.
+This file tracks work after the `v0.5.0` Beta Preview release.
 
 `MAIN_ROADMAP.md` is the authoritative record for the long stabilization push that brought SafeDeps to the current pre-release state. This file should stay focused on future work only, so old completed items are not repeated as active TODOs.
 
 ## Current Baseline
 
-Status after `MAIN_ROADMAP.md` reconciliation:
+Status after the `v0.5.0` Beta Preview:
 
-- `v0.4.0` Beta Preview stabilization work is released.
-- Local gate is green: `345` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
+- `v0.5.0` Beta Preview is published to PyPI and GitHub Releases.
+- Local gate is green: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
 - Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
-- Python/pip is the primary stable runtime guard path.
+- Python/pip is the primary stable runtime guard path and is covered by blocking Linux, macOS, Windows PowerShell, and Windows CMD e2e jobs.
+- Poetry lockfile scanning is validated across a required version matrix.
 - npm and NuGet scan support are validated, while runtime protection remains limited or experimental unless explicitly documented otherwise.
 - Local UI smoke has been manually validated from the native Windows side for the core Python/safe/bad fixture path.
-- PyPI `0.4.0` is published; npm and NuGet packages are built as release artifacts but are not published to their public registries yet.
-- GitHub Release assets and build provenance exist for `v0.4.0`; PyPI Trusted Publishing, npm provenance publishing, and NuGet registry publishing remain future validation work.
-- Honest claim status: SafeDeps now has strong evidence for the tested local dependency policy-gate scope and is tracked against a private top-frontier baseline. It should not claim stable release signing, Trusted Publishing, npm runtime protection, NuGet runtime protection, or public registry publishing until those areas have their own green, blocking evidence.
+- PyPI `0.5.0` is published; npm and NuGet packages are built as release assets but are not promoted as public-registry install channels yet.
+- GitHub Release assets and build provenance exist for `v0.5.0`; PyPI Trusted Publishing, npm provenance publishing, NuGet registry publishing, npm runtime protection, and NuGet runtime protection remain future validation work.
+- Honest claim status: SafeDeps has strong repository, CI, documentation, and tested Python/pip evidence. It is still a Beta Preview until release trust, package-intelligence depth, npm/NuGet runtime matrices, and multi-release maturity are stronger.
+
+## Next Strategic Target
+
+Goal: move from a credible Beta Preview to a production-grade dependency firewall that clears the private top-frontier quality bar, without broadening public claims before the evidence exists.
+
+Primary gaps to close:
+
+1. Release trust: PyPI Trusted Publishing/OIDC, documented provenance, complete artifact attestation checks, and pinned GitHub Actions.
+2. Package intelligence: OSV ingestion, local advisory datasets, suspicious package heuristics, package-age and maintainer-change signals, and deterministic offline fixtures.
+3. Runtime depth: broader pip matrix plus blocking npm and NuGet runtime guard e2e coverage before runtime claims change.
+4. Ecosystem depth: npm workspaces, aliases, tarballs, git dependencies, local paths, private registries; NuGet source mapping, private feeds, lockfiles, transitive packages.
+5. Maturity: multiple consecutive green releases with no hidden failing jobs, no broad `continue-on-error`, and no claim drift between README, docs, release notes, and workflows.
+
+Suggested release ladder:
+
+- `0.5.1`: release trust hardening. Enable/verify PyPI Trusted Publishing, pin GitHub Actions by SHA, and keep public claims scoped.
+- `0.5.2`: package intelligence expansion. Add OSV/local advisory ingestion and richer malicious-package heuristics with deterministic tests.
+- `0.5.3`: npm runtime truth work. Promote npm runtime guard only where blocking e2e matrices prove it.
+- `0.5.4`: NuGet runtime truth work. Validate .NET package-source behavior, private feeds, lockfiles, and runtime guard feasibility.
+- `0.6.0`: production-grade Beta/RC only if release trust, intelligence, npm/NuGet evidence, and maturity gates are all green.
+
+Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release is ready.
+
+### 0.5.1 In Progress: Release Trust Hardening
+
+Status: local PyPI Trusted Publishing path prepared. Do not claim it is proven until the `v0.5.1` tag workflow publishes successfully through OIDC.
+
+- [x] Configure PyPI Trusted Publishing/OIDC for the release workflow.
+- [x] Remove the PyPI API-token/Twine fallback from the release workflow.
+- [ ] Pin third-party GitHub Actions to full commit SHAs, while keeping an update process for maintainability.
+- [x] Add contract tests so token-based PyPI publishing cannot silently return.
+- [ ] Verify build provenance covers every release asset listed in `release-manifest.json`.
+- [ ] Document exactly what the attestations prove and what they do not prove.
+- [ ] Run a non-publishing release dry-run and one real patch release to prove the release trust path.
+
+### 0.5.2 Planned: Package Intelligence Expansion
+
+Status: planned. Goal: make SafeDeps stronger at recognizing risky or malicious dependency changes, not only policy-shape violations.
+
+- [ ] Add OSV advisory ingestion behind deterministic local fixtures.
+- [ ] Add a normalized advisory model shared by pip, npm, NuGet, and local vulnerability feeds.
+- [ ] Add package age, maintainer-change, repository-link, and download/metadata anomaly signals where data is available.
+- [ ] Add malicious-package fixture datasets that are safe, synthetic, and deterministic.
+- [ ] Add policy controls for metadata-risk thresholds and advisory severities.
+- [ ] Keep online checks optional; offline deterministic checks must remain the release gate.
+
+### 0.5.3 Planned: npm Runtime Truth Work
+
+Status: planned. Goal: promote only the npm runtime paths that have blocking e2e evidence.
+
+- [ ] Decide exact supported npm versions and OS/shell combinations.
+- [ ] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
+- [ ] Add coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
+- [ ] Add registry/source policy tests for default registry, custom registry, and untrusted registry behavior.
+- [ ] Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
+
+### 0.5.4 Planned: NuGet Runtime Truth Work
+
+Status: planned. Goal: decide whether NuGet stays scan-first or gains a stable runtime guard claim.
+
+- [ ] Validate package-source behavior for `NuGet.Config`, source mapping, and private feeds.
+- [ ] Add lockfile and transitive package tests for representative SDK versions.
+- [ ] Add e2e coverage for `dotnet add package`, restore, floating versions, and untrusted sources where feasible.
+- [ ] Decide and document whether runtime interception is supported or whether NuGet remains scan/CI policy only.
+- [ ] Keep NuGet runtime claims experimental until the supported scope is proven by blocking e2e jobs.
+
+### 0.6.0 Target: Production-Grade Evidence
+
+Status: aspirational target, not guaranteed. Cut `0.6.0` only when SafeDeps has enough evidence to claim a meaningfully stronger production posture.
+
+- [ ] At least one release-trust path is proven without API-token-only PyPI publishing.
+- [ ] Required workflows use pinned action SHAs or an explicitly documented exception process.
+- [ ] Package intelligence covers local advisories, OSV-style advisories, and metadata-risk signals with deterministic tests.
+- [ ] npm and NuGet support claims are either proven by blocking runtime matrices or explicitly kept scan-only/experimental.
+- [ ] Release notes, README, ecosystem support docs, and comparison docs all describe the same tested scope.
+- [ ] At least two consecutive patch releases complete without hidden failing jobs or claim corrections after publication.
 
 ## Completed Or Superseded By v0.4.0
 
@@ -37,29 +114,9 @@ The following old roadmap themes have already been absorbed by `v0.4.0` and shou
 - pip runtime guard hardening for the main supported paths;
 - npm and NuGet scan validation workflows.
 
-## Immediate Post-v0.4 Work
+## Completed Post-v0.4 Milestones
 
-These are the first items after the `v0.4.0` tag, before adding larger product features:
-
-Version target: use `0.4.1` for the first hardening release. Do not jump to `0.5.0` until SafeDeps has genuinely stronger guarantees: required e2e gates are green without hidden failures, static analysis is stricter, and the claim-hardening checklist below is mostly complete.
-
-1. Make CI truthfully blocking again: remove `continue-on-error` from stable workflows only after each affected job is green locally and remotely.
-2. Fix Windows e2e failures instead of masking them, especially pip guard and shell-wrapper paths.
-3. Promote e2e pip from diagnostic to required once the matrix has no hidden failing cases.
-4. Strengthen Ruff and mypy so quality jobs catch more than syntax-level errors.
-5. Add explicit compatibility matrices for pip versions and Poetry versions before broadening support claims.
-6. Keep npm and NuGet registry publishing out of stable claims until token scope, package identity, provenance, and publish dry runs are proven.
-
-Suggested release ladder:
-
-- `0.4.1`: CI truth hardening. Fix hidden failing jobs, reduce `continue-on-error`, keep registry claims unchanged.
-- `0.4.2`: pip guard compatibility expansion. Add harder pip install cases and a broader pip-version matrix.
-- `0.4.3`: static analysis hardening. Tighten Ruff and mypy in small, passing steps.
-- `0.4.4`: Poetry and release-trust validation. Add Poetry matrix work and verify publishing/attestation claims.
-- `0.4.5`: claim evidence and release-candidate readiness. Align public claims with the tested support scope and top-frontier baseline.
-- `0.5.0`: claim upgrade only if required gates are truly blocking and the supported-scope evidence is documented.
-
-Do not advance package versions at the start of a local hardening cycle. Change version files only when the next release scope is verified and the final release is ready.
+The following sections are historical proof for how SafeDeps reached `v0.5.0`. They are kept for traceability, not as active TODOs.
 
 ### 0.4.1 Completed: CI Truth Hardening
 
@@ -79,7 +136,7 @@ Status: completed on `main` after the post-`v0.4.0` hardening commits. Keep `v0.
 - Keep npm/NuGet runtime and registry publishing diagnostic/experimental until tested independently.
 - Run local gates before any commit: `make checks`, version preflight, package build, `twine check`, and representative CLI/UI smoke.
 
-### 0.4.2 Next: pip Guard Compatibility Expansion
+### 0.4.2 Completed: pip Guard Compatibility Expansion
 
 Status: completed after GitHub Actions validation. Focus: make Python/pip coverage strong enough to support stronger scoped claims without broadening ecosystem claims prematurely.
 
@@ -151,7 +208,7 @@ Status: completed after local gates, GitHub Actions validation, release dry-run,
 - [x] Move the published `0.4.0` release note into `release-notes/old/`.
 - [x] Run local version/preflight checks for `0.5.0`.
 - [x] Run final local quality gate for `0.5.0`: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
-- [x] Verify GitHub Actions after the release-candidate push.
+- [x] Verify GitHub Actions after the final pre-tag validation push.
 - [x] Run release workflow dry-run with `publish=false`.
 - [x] Create tag and release only after the dry-run is green.
 - [x] Verify PyPI `0.5.0` availability and GitHub Release `v0.5.0` assets.

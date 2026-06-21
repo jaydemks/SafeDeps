@@ -42,7 +42,7 @@ python -m pip install --upgrade pip build
 python -m build
 ```
 
-Publish (current `0.5.0` Beta Preview path: API token fallback only unless Trusted Publishing is explicitly verified). Do not claim PyPI Trusted Publishing/OIDC until the release workflow has been validated from a non-publishing dry run and the PyPI trusted publisher configuration is confirmed.
+Publish through PyPI Trusted Publishing/OIDC from `.github/workflows/release-template.yml`. The PyPI project must have a trusted publisher configured for this repository, workflow, and release environment before the tag workflow can publish.
 
 ## npm Wrapper
 
@@ -73,15 +73,14 @@ dotnet nuget push artifacts/dotnet/*.nupkg --source https://api.nuget.org/v3/ind
 
 Workflow: `.github/workflows/release-template.yml`
 
-Status for `0.5.0`: release workflow scaffold exists, but publishing and attestation paths must be validated before they are treated as production release guarantees.
+Status for `0.5.1`: PyPI publishing is expected to use Trusted Publishing/OIDC. npm and NuGet publishing remain token-based or skipped until their own registry trust paths are verified.
 
 - `publish=false`:
   - build + artifact validation only
   - release checksum manifest generation
   - no registry publication
 - `publish=true`:
-  - PyPI publish via `PYPI_API_TOKEN` when configured
-  - PyPI upload runs with verbose logging and `--skip-existing` so reruns can skip already uploaded files
+  - PyPI publish through Trusted Publishing/OIDC
   - npm publish with provenance
   - NuGet publish when `NUGET_API_KEY` secret is configured
 - `push tag vX.Y.Z`:
@@ -96,12 +95,12 @@ Do not promote Trusted Publishing or release attestations from "scaffolded" to "
 
 - `workflow_dispatch` with `publish=false` succeeds and produces Python, npm, NuGet, and checksum manifest artifacts.
 - `scripts/release/preflight.py --expected-version X.Y.Z --require-tag` passes on the release tag.
-- PyPI trusted publisher configuration is verified, or the release intentionally uses the documented API token fallback.
+- PyPI trusted publisher configuration is verified for repository, workflow, tag event, and release environment.
 - npm provenance publishing is verified against the expected package name and tarball path.
 - NuGet publish is verified with the expected package ID and API key scope.
 - GitHub build provenance attestation succeeds on a tag run and the attestation subject list includes every release artifact.
 
-Until then, release notes should say "release workflow scaffold" or "attestation scaffold", not "Trusted Publishing enabled".
+Until then, release notes should say "Trusted Publishing path prepared", not "Trusted Publishing proven".
 
 ## Artifact Integrity Manifest
 

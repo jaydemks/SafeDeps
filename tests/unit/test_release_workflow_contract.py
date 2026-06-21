@@ -28,10 +28,17 @@ def test_release_publish_jobs_are_explicitly_gated_and_skippable():
         block = _job_block(text, job)
         assert "if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == 'true' }}" in block
 
-    assert "PYPI_API_TOKEN is not configured. Skipping PyPI publish." in text
+    pypi_block = _job_block(text, "publish-pypi")
+    assert "id-token: write" in pypi_block
+    assert "environment:" in pypi_block
+    assert "name: pypi" in pypi_block
+    assert "uses: pypa/gh-action-pypi-publish@release/v1" in pypi_block
+    assert "packages-dir: dist/" in pypi_block
+    assert "PYPI_API_TOKEN" not in pypi_block
+    assert "twine upload" not in pypi_block
+
     assert "NPM_TOKEN is not configured. Skipping npm publish." in text
     assert "NUGET_API_KEY is not configured. Skipping NuGet publish." in text
-    assert "python -m twine upload" in text
     assert 'npm publish "$NPM_TARBALL" --access public --provenance' in text
     assert 'dotnet nuget push "dotnet-dist/*.nupkg"' in text
 
@@ -58,7 +65,7 @@ def test_release_dry_run_dispatch_uses_current_ref_until_publish_or_tag():
     text = _release_workflow_text()
 
     assert "inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref" in text
-    assert "body_path: RELEASE_NOTES_2026-06-21.md" in text
+    assert "body_path: RELEASE_NOTES_2026-06-21-0.5.1.md" in text
 
 
 def test_release_attestation_and_github_release_include_all_artifact_classes():

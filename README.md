@@ -15,7 +15,7 @@ This is useful when developers, scripts, or AI coding agents can add packages to
 
 SafeDeps does not try to prove that every package is safe. It enforces your dependency policy before the change goes through.
 
-SafeDeps `0.5.0` is a **Beta Preview**: Python/pip and Poetry lockfile scanning are the strongest tested paths, npm and NuGet scanning are available, and npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
+SafeDeps `0.5.1` is a **Beta Preview**: Python/pip and Poetry lockfile scanning are the strongest tested paths, npm and NuGet scanning are available, and npm/NuGet runtime protection remains experimental until the full compatibility matrix is green.
 
 ## 90-second quickstart
 
