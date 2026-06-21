@@ -58,7 +58,8 @@ def path_is_excluded(root: Path, path: Path, policy) -> bool:
         item = str(p or "").strip().replace("\\", "/")
         if not item:
             continue
-        if rel == item or rel.startswith((item.rstrip("/") + "/", item)):
+        normalized = item.rstrip("/")
+        if rel == normalized or rel.startswith(normalized + "/"):
             return True
     return False
 

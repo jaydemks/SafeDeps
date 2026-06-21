@@ -30,6 +30,7 @@ Primary gaps to close:
 3. Runtime depth: broader pip matrix plus blocking npm and NuGet runtime guard e2e coverage before runtime claims change.
 4. Ecosystem depth: npm workspaces, aliases, tarballs, git dependencies, local paths, private registries; NuGet source mapping, private feeds, lockfiles, transitive packages.
 5. Maturity: multiple consecutive green releases with no hidden failing jobs, no broad `continue-on-error`, and no claim drift between README, docs, release notes, and workflows.
+6. Coverage hardening: move from high coverage to deliberate 100% coverage module by module, prioritizing security-critical and newly changed code first.
 
 Suggested release ladder:
 
@@ -56,7 +57,7 @@ Status: completed after PyPI Trusted Publishing/OIDC, release workflow SHA pinni
 
 ### 0.5.2 Completed Locally: Package Intelligence Expansion
 
-Status: completed locally after passing `make checks` with `355` tests and `91.88%` coverage. Verify GitHub Actions after push before marking fully complete.
+Status: completed locally after passing `make checks` with `355` tests and `91.88%` coverage. Additional coverage hardening raised `safedeps/vulnerability_intel.py`, `safedeps/policy.py`, `safedeps/reports.py`, `safedeps/scanners/base.py`, and `safedeps/scanners/git_scanner.py` to `100.00%` line and branch coverage. Verify GitHub Actions after push before marking fully complete.
 
 - [x] Add OSV advisory ingestion behind deterministic local fixtures.
 - [x] Add a normalized advisory model shared by pip, npm, NuGet, and local vulnerability feeds.
@@ -66,6 +67,11 @@ Status: completed locally after passing `make checks` with `355` tests and `91.8
 - [x] Add malicious-package fixture datasets that are safe, synthetic, and deterministic.
 - [x] Add policy controls for metadata-risk thresholds and advisory severities.
 - [x] Keep online checks optional; offline deterministic checks must remain the release gate.
+- [x] Raise the new local advisory intelligence module to `100.00%` line and branch coverage.
+- [x] Raise policy loading and schema validation to `100.00%` line and branch coverage.
+- [x] Raise report generation, baseline filtering, and scan summary output to `100.00%` line and branch coverage.
+- [x] Raise scanner base helpers to `100.00%` line and branch coverage, including normalized `exclude_paths` handling.
+- [x] Raise Git submodule scanning to `100.00%` line and branch coverage.
 - [ ] Verify GitHub Actions after push.
 
 ### 0.5.3 Planned: npm Runtime Truth Work
@@ -98,6 +104,7 @@ Status: aspirational target, not guaranteed. Cut `0.6.0` only when SafeDeps has 
 - [ ] npm and NuGet support claims are either proven by blocking runtime matrices or explicitly kept scan-only/experimental.
 - [ ] Release notes, README, ecosystem support docs, and comparison docs all describe the same tested scope.
 - [ ] At least two consecutive patch releases complete without hidden failing jobs or claim corrections after publication.
+- [ ] Reach deliberate `100%` project coverage, or document any excluded line as intentionally untestable with a specific reason.
 
 ## Completed Or Superseded By v0.4.0
 

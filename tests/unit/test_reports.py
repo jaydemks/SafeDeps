@@ -7,10 +7,12 @@ from safedeps.reports import (
     REPORT_RENDERERS,
     _component_ref,
     _finding_fingerprint_from_dict,
+    _js_escape,
     _purl_for,
     _unique_components,
     apply_vulnerability_baseline,
     finding_fingerprint,
+    print_summary,
     to_cyclonedx,
     to_html_report,
     to_sarif,
@@ -50,6 +52,37 @@ def test_vulnerability_baseline_suppresses_matching_finding(tmp_path):
     assert apply_vulnerability_baseline(tmp_path, policy, [finding]) == []
 
 
+def test_vulnerability_baseline_suppresses_future_expiring_entry(tmp_path):
+    finding = Finding(
+        severity="HIGH",
+        manager="pip",
+        rule="KNOWN_VULNERABILITY",
+        package="requests",
+        file="requirements.txt",
+        message="blocked",
+    )
+    baseline = tmp_path / ".safedeps" / "vuln-baseline.json"
+    baseline.parent.mkdir()
+    baseline.write_text(
+        json.dumps(
+            {
+                "suppress": [
+                    {
+                        "manager": "pip",
+                        "rule": "KNOWN_VULNERABILITY",
+                        "package": "requests",
+                        "file": "requirements.txt",
+                        "expires": "2099-01-01",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert apply_vulnerability_baseline(tmp_path, Policy({}), [finding]) == []
+
+
 def test_vulnerability_baseline_ignores_invalid_json(tmp_path):
     finding = Finding("HIGH", "pip", "KNOWN_VULNERABILITY", "blocked", package="requests")
     baseline = tmp_path / ".safedeps" / "vuln-baseline.json"
@@ -57,6 +90,44 @@ def test_vulnerability_baseline_ignores_invalid_json(tmp_path):
     baseline.write_text("{ invalid", encoding="utf-8")
 
     assert apply_vulnerability_baseline(tmp_path, Policy({}), [finding]) == [finding]
+
+
+def test_vulnerability_baseline_ignores_disabled_missing_empty_and_invalid_entries(tmp_path):
+    finding = Finding("HIGH", "pip", "KNOWN_VULNERABILITY", "blocked", package="requests")
+
+    assert (
+        apply_vulnerability_baseline(
+            tmp_path,
+            Policy({"enable_vulnerability_baseline": False}),
+            [finding],
+        )
+        == [finding]
+    )
+    assert apply_vulnerability_baseline(tmp_path, Policy({}), [finding]) == [finding]
+
+    baseline = tmp_path / ".safedeps" / "vuln-baseline.json"
+    baseline.parent.mkdir()
+    for data in (
+        {"suppress": {}},
+        {"suppress": ["bad"]},
+        {"suppress": [{"manager": "pip", "rule": "KNOWN_VULNERABILITY", "expires": "2000-01-01"}]},
+        {"suppress": [{"manager": "pip", "rule": "KNOWN_VULNERABILITY", "expires": "not-a-date"}]},
+    ):
+        baseline.write_text(json.dumps(data), encoding="utf-8")
+        assert apply_vulnerability_baseline(tmp_path, Policy({}), [finding]) == [finding]
+
+
+def test_vulnerability_baseline_ignores_empty_baseline_path(tmp_path):
+    finding = Finding("HIGH", "pip", "KNOWN_VULNERABILITY", "blocked", package="requests")
+
+    assert (
+        apply_vulnerability_baseline(
+            tmp_path,
+            Policy({"vulnerability_baseline_file": " "}),
+            [finding],
+        )
+        == [finding]
+    )
 
 
 def test_finding_fingerprint_is_case_normalized():
@@ -98,6 +169,41 @@ def test_sbom_reporters_emit_expected_package_references():
     assert sarif["runs"][0]["results"][0]["level"] == "error"
     assert cyclonedx["components"][0]["purl"] == "pkg:pypi/requests@2.32.3"
     assert spdx["packages"][0]["externalRefs"][0]["referenceLocator"] == "pkg:pypi/requests@2.32.3"
+
+
+def test_reporters_skip_empty_components_and_locations():
+    result = ScanResult(
+        ok=True,
+        findings=[Finding("INFO", "pip", "NOTE", "message without file")],
+        sbom={"components": [{"manager": "pip", "name": "", "version": ""}]},
+    )
+
+    sarif = to_sarif(result)
+    cyclonedx = to_cyclonedx(result)
+    spdx = to_spdx(result)
+
+    assert "locations" not in sarif["runs"][0]["results"][0]
+    assert cyclonedx["components"] == []
+    assert spdx["packages"] == []
+
+
+def test_reporters_allow_components_without_version_or_manager():
+    result = ScanResult(
+        ok=True,
+        findings=[],
+        sbom={"components": [{"name": "local-lib"}]},
+    )
+
+    cyclonedx = to_cyclonedx(result)
+    spdx = to_spdx(result)
+
+    assert cyclonedx["components"][0] == {
+        "type": "library",
+        "name": "local-lib",
+        "bom-ref": "pkg:generic/local-lib",
+    }
+    assert "versionInfo" not in spdx["packages"][0]
+    assert "externalRefs" not in spdx["packages"][0]
 
 
 def test_purl_and_component_ref_helpers_cover_known_managers():
@@ -348,6 +454,14 @@ def test_html_report_orders_findings_by_severity_and_escapes_cells():
     assert "/mnt/" not in html
 
 
+def test_html_report_renders_pass_with_no_findings():
+    html = to_html_report(ScanResult(ok=True, findings=[], sbom={"components": []}), "HIGH")
+
+    assert "status-pass" in html
+    assert "No findings." in html
+    assert "<div>Findings: 0</div>" in html
+
+
 def test_write_scan_outputs_writes_default_and_optional_report_formats(tmp_path):
     result = _mixed_report_result()
     assert set(REPORT_RENDERERS) == {"sarif", "cyclonedx", "spdx", "html"}
@@ -370,3 +484,34 @@ def test_write_scan_outputs_writes_default_and_optional_report_formats(tmp_path)
     assert json.loads((tmp_path / "reports" / "safedeps.cdx.json").read_text(encoding="utf-8"))["bomFormat"] == "CycloneDX"
     assert json.loads((tmp_path / "reports" / "safedeps.spdx.json").read_text(encoding="utf-8"))["spdxVersion"] == "SPDX-2.3"
     assert "SafeDeps Scan Report" in (tmp_path / "reports" / "safedeps.html").read_text(encoding="utf-8")
+
+
+def test_write_scan_outputs_allows_default_artifacts_only(tmp_path):
+    outdir = write_scan_outputs(
+        ScanResult(ok=True, findings=[], sbom={"components": []}),
+        tmp_path,
+        "security-artifacts",
+        fail_on="HIGH",
+    )
+
+    assert (outdir / "safedeps-report.json").exists()
+    assert (outdir / "safedeps-sbom.json").exists()
+    assert not (tmp_path / "reports").exists()
+
+
+def test_js_escape_handles_quotes_slashes_and_newlines():
+    assert _js_escape("a\\b'c\n\r") == "a\\\\b\\'c\\n\\r"
+
+
+def test_print_summary_outputs_sorted_findings_and_fixes(tmp_path, capsys):
+    result = _mixed_report_result()
+    result.findings[0].fix = "Pin the dependency."
+
+    print_summary(result, "HIGH", tmp_path / "security-artifacts")
+
+    output = capsys.readouterr().out
+    assert "Status: FAIL   fail-on: HIGH" in output
+    assert "Findings: 3   Components: 4" in output
+    assert output.index("- HIGH npm/FLOATING_VERSION") < output.index("- MEDIUM nuget/KNOWN_VULNERABILITY")
+    assert "fix: Pin the dependency." in output
+    assert "safedeps-report.json" in output

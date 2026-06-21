@@ -10,7 +10,8 @@ from safedeps.package_managers import (
 )
 from safedeps.policy import Policy
 from safedeps.scanners import SCANNERS
-from safedeps.scanners.base import Scanner
+from safedeps.scanners.base import Scanner, iter_files, path_is_excluded, severity_for_exception
+from safedeps.scanners.git_scanner import GitScanner
 from safedeps.scanners.npm_scanner import NpmScanner
 from safedeps.scanners.nuget_scanner import NugetScanner
 from safedeps.scanners.pip_scanner import PipScanner
@@ -36,8 +37,9 @@ def _rules(findings):
     return [finding.rule for finding in findings]
 
 
-def test_scanner_adapter_metadata_and_package_target_component_shape():
+def test_scanner_adapter_metadata_and_package_target_component_shape(tmp_path):
     scanner = Scanner()
+    assert scanner.scan(tmp_path, _policy()) == ([], [])
     component = scanner.component_from_target(
         PackageTarget(manager="pip", name="requests", version="2.32.3", file="requirements.txt", scope="runtime")
     )
@@ -57,6 +59,66 @@ def test_scanner_adapter_metadata_and_package_target_component_shape():
     assert "package-lock.json" in metadata["npm"].lockfiles
     assert "*.csproj" in metadata["nuget"].manifests
     assert ".gitmodules" in metadata["git"].manifests
+
+
+def test_base_iter_files_skips_transient_directories_and_matches_patterns(tmp_path):
+    (tmp_path / "requirements.txt").write_text("requests==2.32.3", encoding="utf-8")
+    (tmp_path / "nested").mkdir()
+    (tmp_path / "nested" / "requirements-dev.txt").write_text("pytest==8.0.0", encoding="utf-8")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "requirements.txt").write_text("ignored==1", encoding="utf-8")
+    (tmp_path / ".venv-local").mkdir()
+    (tmp_path / ".venv-local" / "requirements.txt").write_text("ignored==1", encoding="utf-8")
+
+    matches = sorted(path.relative_to(tmp_path).as_posix() for path in iter_files(tmp_path, "requirements*.txt"))
+
+    assert matches == ["nested/requirements-dev.txt", "requirements.txt"]
+
+
+def test_base_path_exclusion_handles_relative_outside_and_empty_policy_entries(tmp_path):
+    policy = _policy(exclude_paths=["examples/", "", None])
+
+    assert path_is_excluded(tmp_path, tmp_path / "examples" / "bad-project" / "package.json", policy)
+    assert path_is_excluded(tmp_path, tmp_path / "examples", policy)
+    assert not path_is_excluded(tmp_path, tmp_path / "src" / "package.json", policy)
+    assert not path_is_excluded(tmp_path, tmp_path.parent / "outside" / "package.json", _policy())
+
+
+def test_severity_for_exception_returns_info_for_matching_exception():
+    tomorrow_policy = _policy(
+        require_expiring_exceptions=False,
+        exceptions=[{"manager": "pip", "package": "requests", "rule": "UNPINNED_VERSION"}],
+    )
+
+    assert severity_for_exception(tomorrow_policy, "pip", "requests", "UNPINNED_VERSION") == "INFO"
+    assert severity_for_exception(_policy(), "pip", "requests", "UNPINNED_VERSION", default="CRITICAL") == "CRITICAL"
+
+
+def test_git_scanner_handles_missing_gitmodules(tmp_path):
+    assert GitScanner().scan(tmp_path, _policy()) == ([], [])
+
+
+def test_git_scanner_reports_insecure_submodule_urls(tmp_path):
+    (tmp_path / ".gitmodules").write_text(
+        """
+[submodule "safe"]
+  path = safe
+  url = https://example.test/safe.git
+[submodule "bad"]
+  path = bad
+  url = http://example.test/bad.git
+""".strip(),
+        encoding="utf-8",
+    )
+
+    findings, components = GitScanner().scan(tmp_path, _policy())
+
+    assert [finding.rule for finding in findings] == ["INSECURE_GIT_URL"]
+    assert findings[0].severity == "CRITICAL"
+    assert [component["name"] for component in components] == [
+        "https://example.test/safe.git",
+        "http://example.test/bad.git",
+    ]
 
 
 def test_package_manager_adapter_wraps_scanner_metadata_and_scan(tmp_path):
