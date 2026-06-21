@@ -9,6 +9,7 @@ from scripts.release.create_release_manifest import artifact_path, collect_files
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-template.yml"
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 NPM_E2E_WORKFLOW = ROOT / ".github" / "workflows" / "e2e-npm.yml"
 NUGET_E2E_WORKFLOW = ROOT / ".github" / "workflows" / "e2e-nuget.yml"
 WORKFLOWS_DIR = ROOT / ".github" / "workflows"
@@ -16,6 +17,10 @@ WORKFLOWS_DIR = ROOT / ".github" / "workflows"
 
 def _release_workflow_text() -> str:
     return RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _ci_workflow_text() -> str:
+    return CI_WORKFLOW.read_text(encoding="utf-8")
 
 
 def _npm_e2e_workflow_text() -> str:
@@ -84,6 +89,15 @@ def test_release_dry_run_dispatch_uses_current_ref_until_publish_or_tag():
 
     assert "inputs.publish == 'true' && inputs.release_version && format('v{0}', inputs.release_version) || github.ref" in text
     assert "body_path: RELEASE_NOTES_2026-06-21-0.6.0.md" in text
+
+
+def test_ci_release_preflight_tracks_current_project_version():
+    project_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    version_match = re.search(r'(?m)^version = "([^"]+)"$', project_text)
+    assert version_match is not None
+
+    ci_text = _ci_workflow_text()
+    assert f"python scripts/release/preflight.py --expected-version {version_match.group(1)}" in ci_text
 
 
 def test_release_attestation_and_github_release_include_all_artifact_classes():

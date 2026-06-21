@@ -27,4 +27,4 @@ jobs:
       - name: Compile Python modules
         run: python -m py_compile safedeps/*.py safedeps/assets/*.py
       - name: Release preflight
-        run: python scripts/release/preflight.py --expected-version 0.5.1
+        run: python scripts/release/preflight.py --expected-version 0.6.0
