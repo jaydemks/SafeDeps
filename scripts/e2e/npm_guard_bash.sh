@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runner_temp="${RUNNER_TEMP:-/tmp}"
+python_bin="${PYTHON_BIN:-python}"
+
+activate_guard() {
+  local project="$1"
+  mkdir -p "$project"
+  cd "$project"
+  npm init -y
+  "$python_bin" -m safedeps.cli setup . --install-scope system --protection-scope project
+  # shellcheck disable=SC1091
+  source ./.safedeps/activate.sh
+  hash -r
+}
+
+assert_blocked() {
+  local message="$1"
+  shift
+  if "$@"; then
+    echo "$message"
+    exit 1
+  fi
+}
+
+test_unpinned_install_policy() {
+  local project="$runner_temp/safedeps-npm-runtime-install"
+  activate_guard "$project"
+  assert_blocked "Expected unpinned npm install to be blocked." npm install lodash
+  npm install lodash@4.17.21 --ignore-scripts
+}
+
+test_lifecycle_script_policy() {
+  local project="$runner_temp/safedeps-npm-runtime-lifecycle"
+  activate_guard "$project"
+  "$python_bin" - <<'PY'
+import json
+from pathlib import Path
+Path("package.json").write_text(json.dumps({
+    "name": "safedeps-npm-runtime-lifecycle",
+    "version": "1.0.0",
+    "scripts": {"postinstall": "node postinstall.js"},
+    "dependencies": {"lodash": "4.17.21"},
+}), encoding="utf-8")
+PY
+  assert_blocked "Expected npm install script project to be blocked." npm install --package-lock-only
+}
+
+test_uninstall_policy() {
+  local project="$runner_temp/safedeps-npm-runtime-uninstall"
+  activate_guard "$project"
+  npm install lodash@4.17.21 --ignore-scripts
+  assert_blocked "Expected npm uninstall to be blocked by scan policy." npm uninstall lodash
+}
+
+test_unpinned_install_policy
+test_lifecycle_script_policy
+test_uninstall_policy

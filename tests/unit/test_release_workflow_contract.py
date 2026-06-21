@@ -9,11 +9,16 @@ from scripts.release.create_release_manifest import artifact_path, collect_files
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-template.yml"
+NPM_E2E_WORKFLOW = ROOT / ".github" / "workflows" / "e2e-npm.yml"
 WORKFLOWS_DIR = ROOT / ".github" / "workflows"
 
 
 def _release_workflow_text() -> str:
     return RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _npm_e2e_workflow_text() -> str:
+    return NPM_E2E_WORKFLOW.read_text(encoding="utf-8")
 
 
 def _workflow_texts() -> dict[str, str]:
@@ -105,6 +110,24 @@ def test_required_workflow_actions_are_pinned_to_full_shas():
                 mutable_refs.append(f"{workflow_name}:{line_number}: {line.strip()}")
 
     assert mutable_refs == []
+
+
+def test_npm_runtime_guard_workflow_uses_dedicated_e2e_scripts():
+    text = _npm_e2e_workflow_text()
+    runtime_block = _job_block(text, "runtime-guard-experimental")
+
+    assert "if: github.event_name == 'workflow_dispatch'" in runtime_block
+    assert "continue-on-error: true" in runtime_block
+    assert "bash scripts/e2e/npm_guard_bash.sh" in runtime_block
+    assert "./scripts/e2e/npm_guard_pwsh.ps1" in runtime_block
+    assert "call scripts\\e2e\\npm_guard_cmd.bat" in runtime_block
+
+    for script_name in ("npm_guard_bash.sh", "npm_guard_pwsh.ps1", "npm_guard_cmd.bat"):
+        script_text = (ROOT / "scripts" / "e2e" / script_name).read_text(encoding="utf-8")
+        assert "npm install lodash" in script_text
+        assert "npm install lodash@4.17.21 --ignore-scripts" in script_text
+        assert "npm uninstall lodash" in script_text
+        assert "postinstall" in script_text
 
 
 def test_release_manifest_collects_python_npm_and_nuget_artifacts(tmp_path):

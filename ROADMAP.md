@@ -55,9 +55,9 @@ Status: completed after PyPI Trusted Publishing/OIDC, release workflow SHA pinni
 - [x] Document exactly what the attestations prove and what they do not prove.
 - [x] Run a non-publishing release dry-run and one real patch release to prove the PyPI Trusted Publishing path.
 
-### 0.5.2 Completed Locally: Package Intelligence Expansion
+### 0.5.2 Completed: Package Intelligence Expansion
 
-Status: completed locally after passing `make checks` with `355` tests and `91.88%` coverage. Additional coverage hardening raised `safedeps/vulnerability_intel.py`, `safedeps/policy.py`, `safedeps/reports.py`, `safedeps/scanners/base.py`, and `safedeps/scanners/git_scanner.py` to `100.00%` line and branch coverage. Verify GitHub Actions after push before marking fully complete.
+Status: completed after local gates and GitHub Actions validation. Additional coverage hardening raised `safedeps/vulnerability_intel.py`, `safedeps/policy.py`, `safedeps/reports.py`, `safedeps/scanners/base.py`, and `safedeps/scanners/git_scanner.py` to `100.00%` line and branch coverage.
 
 - [x] Add OSV advisory ingestion behind deterministic local fixtures.
 - [x] Add a normalized advisory model shared by pip, npm, NuGet, and local vulnerability feeds.
@@ -72,13 +72,17 @@ Status: completed locally after passing `make checks` with `355` tests and `91.8
 - [x] Raise report generation, baseline filtering, and scan summary output to `100.00%` line and branch coverage.
 - [x] Raise scanner base helpers to `100.00%` line and branch coverage, including normalized `exclude_paths` handling.
 - [x] Raise Git submodule scanning to `100.00%` line and branch coverage.
-- [ ] Verify GitHub Actions after push.
+- [x] Verify GitHub Actions after push.
 
-### 0.5.3 Planned: npm Runtime Truth Work
+### 0.5.3 In Progress: npm Runtime Truth Work
 
-Status: planned. Goal: promote only the npm runtime paths that have blocking e2e evidence.
+Status: local workflow structure and dedicated npm runtime guard e2e scripts added. Keep npm runtime claims experimental until the matrix is green without broad `continue-on-error`.
 
 - [ ] Decide exact supported npm versions and OS/shell combinations.
+- [x] Extract npm runtime guard e2e coverage into dedicated Bash, PowerShell, and CMD scripts.
+- [x] Add runtime script coverage for unpinned install block, pinned install allow, lifecycle-script block, and uninstall block.
+- [x] Extend generated npm guard wrappers to block guarded `npm uninstall` operations.
+- [x] Add workflow contract tests so npm runtime e2e logic stays script-based and explicit.
 - [ ] Add blocking npm runtime e2e coverage for install, uninstall, update, package-lock, and lifecycle-script cases.
 - [ ] Add coverage for workspaces, aliases, git dependencies, tarball URLs, and local path dependencies.
 - [ ] Add registry/source policy tests for default registry, custom registry, and untrusted registry behavior.

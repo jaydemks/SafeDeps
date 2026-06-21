@@ -410,7 +410,7 @@ resolve_project_root_from_state() {{
   printf "%s" "$project_root"
 }}
 
-if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ]; then
+if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ] || [ "${{1:-}}" = "uninstall" ]; then
   sub="${{1:-}}"
   shift
   scope="project"
@@ -432,6 +432,10 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ]; then
     if [ "$norm_cur_venv" != "$norm_expected_venv" ]; then
       exec npm "$sub" "$@"
     fi
+  fi
+  if [ "$sub" = "uninstall" ]; then
+    echo "Blocked: npm uninstall is disabled while SafeDeps guard is active."
+    exit 2
   fi
   if [ "$sub" = "install" ] || [ "$sub" = "update" ]; then
     for tok in "$@"; do
@@ -471,7 +475,7 @@ if (Test-Path $GuardStateFile) {{
 }}
 if ($NpmArgs.Length -gt 0) {{
   $cmd = $NpmArgs[0].ToLower()
-  if ($cmd -eq "install" -or $cmd -eq "update") {{
+  if ($cmd -eq "install" -or $cmd -eq "update" -or $cmd -eq "uninstall") {{
     $scope = "project"
     if (Test-Path $GuardStateFile) {{
       try {{
@@ -494,6 +498,10 @@ if ($NpmArgs.Length -gt 0) {{
         & npm @NpmArgs
         exit $LASTEXITCODE
       }}
+    }}
+    if ($cmd -eq "uninstall") {{
+      Write-Host "Blocked: npm uninstall is disabled while SafeDeps guard is active."
+      exit 2
     }}
     for ($i=1; $i -lt $NpmArgs.Length; $i++) {{
       $tok = [string]$NpmArgs[$i]
@@ -521,6 +529,7 @@ exit $LASTEXITCODE
 setlocal EnableExtensions EnableDelayedExpansion
 if /I "%~1"=="install" goto :check
 if /I "%~1"=="update" goto :check
+if /I "%~1"=="uninstall" goto :check
 goto :run
 :check
 set "_should_guard=1"
@@ -546,6 +555,10 @@ if /I not "!_scope!"=="global" (
   )
 )
 if not "!_should_guard!"=="1" goto :run
+if /I "%~1"=="uninstall" (
+  echo Blocked: npm uninstall is disabled while SafeDeps guard is active.
+  exit /b 2
+)
 if "%~2"=="" goto :scan
 echo %* | findstr /I /C:"@" /C:".tgz" /C:".tar.gz" /C:".zip" /C:"git+" >nul
 if errorlevel 1 (

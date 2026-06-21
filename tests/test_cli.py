@@ -1888,6 +1888,9 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_wrapper
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_ps1
     assert "Blocked: python -m pip uninstall is disabled while SafeDeps guard is active." in python_cmd
+    assert "Blocked: npm uninstall is disabled while SafeDeps guard is active." in npm_wrapper
+    assert "Blocked: npm uninstall is disabled while SafeDeps guard is active." in npm_ps1
+    assert "Blocked: npm uninstall is disabled while SafeDeps guard is active." in npm_cmd
     direct_url_message = "Blocked: direct URL/VCS runtime install is not allowed without explicit review."
     assert "runtime_guard.validate_package_source_args" in pip_wrapper
     assert "runtime_guard.validate_package_source_args" in python_wrapper
@@ -1925,6 +1928,7 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert "_expected_venv_norm=!_expected_venv:\\=/!" in pip_cmd
     assert "_expected_venv_norm=!_expected_venv:\\=/!" in python_cmd
     assert "_expected_venv_norm=!_expected_venv:\\=/!" in npm_cmd
+    assert 'if /I "%~1"=="uninstall" goto :check' in npm_cmd
     assert 'set "PATH=%safeDepsBin%;%PATH%"' in activate_bat
     assert "SafeDeps pip guard active for this CMD session." in activate_bat
     assert 'REAL_PY="' in npm_wrapper

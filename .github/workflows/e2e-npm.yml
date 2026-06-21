@@ -200,52 +200,14 @@ jobs:
         shell: bash
         if: matrix.shell == 'bash'
         run: |
-          set -euo pipefail
-          project="$RUNNER_TEMP/safedeps-npm-runtime"
-          mkdir -p "$project"
-          cd "$project"
-          npm init -y
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
-          source ./.safedeps/activate.sh
-          hash -r
-          if npm install lodash; then
-            echo "Expected unpinned npm install to be blocked."
-            exit 1
-          fi
-          npm install lodash@4.17.21 --ignore-scripts
+          bash scripts/e2e/npm_guard_bash.sh
       - name: PowerShell runtime guard blocks unpinned npm install
         shell: pwsh
         if: matrix.shell == 'pwsh'
         run: |
-          $ErrorActionPreference = "Continue"
-          $PSNativeCommandUseErrorActionPreference = $false
-          $project = Join-Path $env:RUNNER_TEMP "safedeps-npm-runtime"
-          New-Item -ItemType Directory -Force -Path $project | Out-Null
-          Set-Location $project
-          npm init -y
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
-          . .\.safedeps\activate.ps1
-          npm install lodash
-          if ($LASTEXITCODE -eq 0) {
-            Write-Error "Expected unpinned npm install to be blocked."
-            exit 1
-          }
-          npm install lodash@4.17.21 --ignore-scripts
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/e2e/npm_guard_pwsh.ps1
       - name: CMD runtime guard blocks unpinned npm install
         shell: cmd
         if: matrix.shell == 'cmd'
         run: |
-          set "PROJECT=%RUNNER_TEMP%\safedeps-npm-runtime"
-          mkdir "%PROJECT%"
-          cd /d "%PROJECT%"
-          npm init -y
-          python -m safedeps.cli setup . --install-scope system --protection-scope project
-          call .safedeps\activate.bat
-          npm install lodash
-          if %ERRORLEVEL% EQU 0 (
-            echo Expected unpinned npm install to be blocked.
-            exit /b 1
-          )
-          npm install lodash@4.17.21 --ignore-scripts
-          if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+          call scripts\e2e\npm_guard_cmd.bat
