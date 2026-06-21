@@ -1932,6 +1932,11 @@ def test_setup_generates_strict_project_guard_wrappers(tmp_path, monkeypatch):
     assert 'set "PATH=%safeDepsBin%;%PATH%"' in activate_bat
     assert "SafeDeps pip guard active for this CMD session." in activate_bat
     assert 'REAL_PY="' in npm_wrapper
+    assert 'REAL_NPM="' in npm_wrapper
+    assert 'exec "${REAL_NPM}" "$@"' in npm_wrapper
+    assert "& $RealNpm @NpmArgs" in npm_ps1
+    assert 'set "_real_npm=' in npm_cmd
+    assert 'call "!_real_npm!" %*' in npm_cmd
     assert 'scope="global"' in npm_wrapper
 
 

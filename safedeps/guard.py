@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import sys
 from contextlib import suppress
 from pathlib import Path
@@ -84,6 +85,8 @@ def cmd_setup(args):
                     stale.unlink()
             except Exception:
                 pass
+    real_npm = shutil.which("npm") or "npm"
+    real_npm_posix = real_npm.replace("\\", "/")
 
     wrapper = f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -395,6 +398,7 @@ exit /b %ERRORLEVEL%
     npm_wrapper = f"""#!/usr/bin/env bash
 set -euo pipefail
 REAL_PY="{real_python}"
+REAL_NPM="{real_npm_posix}"
 PROJECT_ROOT="{root_posix}"
 GUARD_STATE_FILE="{guard_state_posix}"
 EXPECTED_VENV="{expected_venv_posix}"
@@ -423,14 +427,14 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ] || [ "${{1:-}}" = "un
     "${{ACTIVE_PROJECT_ROOT}}"/*) in_project=1 ;;
   esac
   if [ "$scope" != "global" ] && [ $in_project -eq 0 ]; then
-    exec npm "$sub" "$@"
+    exec "${{REAL_NPM}}" "$sub" "$@"
   fi
   if [ "$scope" != "global" ] && [ -n "$EXPECTED_VENV" ]; then
     cur_venv="${{VIRTUAL_ENV:-}}"
     norm_cur_venv="${{cur_venv//\\//}}"
     norm_expected_venv="${{EXPECTED_VENV//\\//}}"
     if [ "$norm_cur_venv" != "$norm_expected_venv" ]; then
-      exec npm "$sub" "$@"
+      exec "${{REAL_NPM}}" "$sub" "$@"
     fi
   fi
   if [ "$sub" = "uninstall" ]; then
@@ -457,10 +461,11 @@ if [ "${{1:-}}" = "install" ] || [ "${{1:-}}" = "update" ] || [ "${{1:-}}" = "un
     exit 2
   fi
 fi
-exec npm "$sub" "$@"
+exec "${{REAL_NPM}}" "$@"
     """
     npm_ps1 = f"""$NpmArgs = $args
 $ErrorActionPreference = "Stop"
+$RealNpm = "{real_npm}"
 $ProjectRoot = "{str(root)}"
 $GuardStateFile = "{str(root / '.safedeps' / 'guard-state.json')}"
 $ExpectedVenv = "{expected_venv}"
@@ -487,7 +492,7 @@ if ($NpmArgs.Length -gt 0) {{
     $stateProjectPath = ($StateProjectRoot).Replace([char]92, '/').TrimEnd("/")
     $inProject = $currentPath.StartsWith($stateProjectPath, [System.StringComparison]::OrdinalIgnoreCase)
     if ($scope -ne "global" -and -not $inProject) {{
-      & npm @NpmArgs
+      & $RealNpm @NpmArgs
       exit $LASTEXITCODE
     }}
     if ($scope -ne "global" -and -not [string]::IsNullOrWhiteSpace($ExpectedVenv)) {{
@@ -495,7 +500,7 @@ if ($NpmArgs.Length -gt 0) {{
       $curVenv = [string]($env:VIRTUAL_ENV)
       $normCurVenv = ($curVenv).Replace([char]92, '/').Trim().TrimEnd("/")
       if ([string]::IsNullOrWhiteSpace($normCurVenv) -or ($normCurVenv -ne $normExpectedVenv)) {{
-        & npm @NpmArgs
+        & $RealNpm @NpmArgs
         exit $LASTEXITCODE
       }}
     }}
@@ -522,11 +527,12 @@ if ($NpmArgs.Length -gt 0) {{
     }}
   }}
 }}
-& npm @NpmArgs
+& $RealNpm @NpmArgs
 exit $LASTEXITCODE
     """
     npm_cmd = f"""@echo off
 setlocal EnableExtensions EnableDelayedExpansion
+set "_real_npm={real_npm}"
 if /I "%~1"=="install" goto :check
 if /I "%~1"=="update" goto :check
 if /I "%~1"=="uninstall" goto :check
@@ -573,7 +579,7 @@ if errorlevel 1 (
   exit /b 2
 )
 :run
-npm %*
+call "!_real_npm!" %*
 exit /b %ERRORLEVEL%
     """
     python_wrapper = f"""#!/usr/bin/env bash
