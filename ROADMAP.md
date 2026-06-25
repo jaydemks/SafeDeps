@@ -9,7 +9,7 @@ This file tracks work after the `v0.5.0` Beta Preview release.
 Status after the `v0.6.0` Beta Preview preparation:
 
 - `v0.5.1` Beta Preview is published to PyPI and GitHub Releases; `v0.6.0` is prepared locally pending final release verification.
-- Local gate is green: `347` tests, `91.89%` coverage, package build, `twine check`, and CLI smoke.
+- Local gate is green: `390` tests, `93.43%` coverage, package build, `twine check`, and CLI smoke.
 - Architecture checklist is complete: CLI parser, scan pipeline, package-manager adapters, verifier interface, reporter registry, guard backend install layer, policy schema validation.
 - Python/pip is the primary stable runtime guard path and is covered by blocking Linux, macOS, Windows PowerShell, and Windows CMD e2e jobs.
 - Poetry lockfile scanning is validated across a required version matrix.
@@ -31,6 +31,39 @@ Primary gaps to close:
 4. Ecosystem depth: npm workspaces, aliases, tarballs, git dependencies, local paths, private registries; NuGet source mapping, private feeds, lockfiles, transitive packages.
 5. Maturity: multiple consecutive green releases with no hidden failing jobs, no broad `continue-on-error`, and no claim drift between README, docs, release notes, and workflows.
 6. Coverage hardening: move from high coverage to deliberate 100% coverage module by module, prioritizing security-critical and newly changed code first.
+
+## Post-0.6.0 Priorities Toward 10/10
+
+The next phase should optimize for completeness, bypass resistance, measured precision, and release maturity in the ecosystems SafeDeps explicitly claims as stable. SafeDeps does not need to support every package manager to reach the highest quality bar; it needs to be complete, hard to bypass, and independently demonstrated for the ecosystems it does claim.
+
+### Priority Order
+
+1. Harden the local UI as an administrative surface.
+2. Complete npm runtime support beyond the first blocking slice.
+3. Build and validate a real NuGet/.NET runtime interception path.
+4. Add modular online intelligence providers and signed offline cache updates.
+5. Add Playwright UI tests, parser fuzzing, property-based testing, mutation testing, and fault injection.
+6. Stabilize Poetry runtime interception after the lockfile-scan matrix.
+7. Prepare external audit, independent beta testing, and a future `1.0` release candidate.
+
+### Capability Gaps
+
+| Category | What is missing for the highest bar |
+| --- | --- |
+| Runtime pip | Test every bypass class: absolute paths, virtualenv, pipx, subprocess calls, shell variants, install/update/uninstall, recursive requirements, supported pip versions, and safe failure on unknown pip versions. |
+| Runtime npm | Move from first slice to stable support for `install`, `ci`, `update`, `uninstall`, global installs, workspaces, lifecycle scripts, Bash/PowerShell/CMD, Node 20/22/24, and representative npm versions. |
+| Runtime NuGet | Create a real `dotnet`/NuGet interceptor for `dotnet add package`, restore, update, `nuget.exe`, and MSBuild flows; test it on Windows/Linux, .NET 8/9/10, and private feeds. Keep NuGet scan/CI-only until then. |
+| Poetry | Go beyond lockfile scanning by intercepting `poetry add`, `install`, `update`, and `sync` across the declared Poetry matrix. |
+| Package intelligence | Add modular online providers for OSV, public malware datasets, and registry metadata; support signed offline cache updates, TTLs, atomic refresh, deduplication, and provider fallback. |
+| Result precision | Build a public benign/malicious fixture corpus, repeatable benchmark, false-positive/false-negative tracking, readable block rationale, and confidence levels. |
+| UI/UX | Add first-run wizard, obvious protection state, "why blocked" explanations, suggested fixes, change previews, history, undo, and confirmations for destructive operations. |
+| UI security | Add session token, Origin checks, CSRF protection, CSP, `frame-ancestors`, request-size limits, project-path sandboxing, and explicit opt-in for remote listening. |
+| Testing | Add Playwright UI tests, property-based tests, parser fuzzing, mutation testing, fault injection, concurrency tests, and harmless malicious fixtures. Coverage alone is not enough. |
+| CI | Split fast PR checks from full nightly matrices; keep stable jobs mandatory; remove broad `continue-on-error`; track flakiness; generate support matrices from CI results where practical. |
+| Architecture | Stabilize public scanner/package-manager/verifier interfaces, document plugin extension points, separate core from CLI/UI, strengthen typing, and enforce function complexity limits. |
+| Release security | Keep Trusted Publishing and SHA-pinned Actions; add reproducible builds, release SBOMs, verifiable attestations, checksums, verification scripts, and rollback procedure. |
+| Documentation | Version docs, add architecture diagrams, enterprise examples, incident-response guidance, API/plugin references, and support matrices generated from CI evidence. |
+| Real-world maturity | Accumulate stable releases, external project trials, independent beta testers, external security audit, CVE handling, compatibility policy, and deprecation policy. |
 
 Suggested release ladder:
 
