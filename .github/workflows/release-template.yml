@@ -308,7 +308,7 @@ jobs:
           name: release-manifest
           path: release-artifacts/
       - name: Create GitHub release
-        uses: softprops/action-gh-release@7c4723f7a335432393329f8f1c564994ce50185d # v3
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3
         with:
           tag_name: ${{ inputs.release_version && format('v{0}', inputs.release_version) || github.ref_name }}
           name: ${{ inputs.release_version && format('SafeDeps {0} Beta Preview - Scoped Policy Gate', inputs.release_version) || format('{0} Beta Preview - Scoped Policy Gate', github.ref_name) }}
